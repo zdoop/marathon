@@ -67,7 +67,6 @@ object TaskGroupBuilder {
 
     podDefinition.containers.map { container =>
       computeTaskInfo(container, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments)
-        // TODO(jdef): should be containerDiscovery instead; not all tasks should have the entire pod's DI
         .setDiscovery(taskDiscovery(podDefinition, endpointAllocationsPerContainer.get(container.name).getOrElse(Nil)))
     }.foreach(taskGroup.addTasks)
 
