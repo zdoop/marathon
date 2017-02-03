@@ -6,6 +6,7 @@ import mesosphere.marathon.core.pod._
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.plugin.task.RunSpecTaskProcessor
 import mesosphere.marathon.raml
+import mesosphere.marathon.raml.Endpoint
 import mesosphere.marathon.state.{ EnvVarString, PathId, PortAssignment, Timestamp }
 import mesosphere.marathon.stream.Implicits._
 import mesosphere.marathon.tasks.PortsMatch
@@ -38,10 +39,11 @@ object TaskGroupBuilder {
   ): (mesos.ExecutorInfo, mesos.TaskGroupInfo, Seq[Option[Int]], Instance.Id) = {
     val instanceId = newInstanceId(podDefinition.id)
 
-    val allEndpoints = for {
-      container <- podDefinition.containers
-      endpoint <- container.endpoints
-    } yield endpoint
+    val allEndpoints = podDefinition.containers.flatMap(_.endpoints)
+
+    assume(
+      allEndpoints.size == resourceMatch.hostPorts.size,
+      "expected total number of endpoints to match number of optional host ports")
 
     val portMappings = computePortMappings(allEndpoints, resourceMatch.hostPorts)
 
@@ -55,9 +57,19 @@ object TaskGroupBuilder {
     val taskGroup = mesos.TaskGroupInfo.newBuilder
     val portAssignments = computePortAssignments(podDefinition, resourceMatch.hostPorts)
 
-    podDefinition.containers
-      .map(computeTaskInfo(_, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments))
-      .foreach(taskGroup.addTasks)
+    val endpointAllocationsPerContainer: Map[String, Seq[(Endpoint, Option[Int])]] =
+      podDefinition.containers.map { c =>
+        c.endpoints.map(c.name -> _)
+      }.flatten.zip(resourceMatch.hostPorts).groupBy { case (t, hp) => t._1 }.map {
+        case (k, s) =>
+          k -> s.map { case (t, hp) => t._2 -> hp }
+      }
+
+    podDefinition.containers.map { container =>
+      computeTaskInfo(container, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments)
+        // TODO(jdef): should be containerDiscovery instead; not all tasks should have the entire pod's DI
+        .setDiscovery(taskDiscovery(podDefinition, endpointAllocationsPerContainer.get(container.name).getOrElse(Nil)))
+    }.foreach(taskGroup.addTasks)
 
     // call all configured run spec customizers here (plugin)
     runSpecTaskProcessor.taskGroup(podDefinition, executorInfo, taskGroup)
@@ -168,8 +180,6 @@ object TaskGroupBuilder {
     if (podDefinition.networks.nonEmpty || podDefinition.volumes.nonEmpty) {
       val containerInfo = mesos.ContainerInfo.newBuilder
         .setType(mesos.ContainerInfo.Type.MESOS)
-
-      // TODO: Does 'DiscoveryInfo' need to be set?
 
       podDefinition.networks.collect{
         case containerNetwork: ContainerNetwork =>
@@ -439,5 +449,13 @@ object TaskGroupBuilder {
       .setName(name)
       .setType(mesos.Value.Type.SCALAR)
       .setScalar(mesos.Value.Scalar.newBuilder.setValue(value))
+  }
+
+  private def taskDiscovery(pod: PodDefinition, allocations: Seq[(Endpoint, Option[Int])]): mesos.DiscoveryInfo = {
+    val ports = PortDiscovery.generate(pod.networks.contains(HostNetwork), allocations)
+    mesos.DiscoveryInfo.newBuilder.setPorts(mesos.Ports.newBuilder.addAllPorts(ports))
+      .setName(pod.id.toHostname)
+      .setVisibility(org.apache.mesos.Protos.DiscoveryInfo.Visibility.FRAMEWORK)
+      .build
   }
 }

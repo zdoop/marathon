@@ -1,7 +1,7 @@
 package mesosphere.mesos
 
 import mesosphere.marathon._
-import mesosphere.marathon.api.serialization.{ ContainerSerializer, PortDefinitionSerializer, PortMappingSerializer }
+import mesosphere.marathon.api.serialization.ContainerSerializer
 import mesosphere.marathon.core.health.MesosHealthCheck
 import mesosphere.marathon.core.task
 import mesosphere.marathon.core.task.Task
@@ -123,35 +123,10 @@ class TaskBuilder(
     discoveryInfoBuilder.setName(runSpec.id.toHostname)
     discoveryInfoBuilder.setVisibility(org.apache.mesos.Protos.DiscoveryInfo.Visibility.FRAMEWORK)
 
-    val portProtos = runSpec.ipAddress match {
-      case Some(IpAddress(_, _, DiscoveryInfo(ports), _)) if ports.nonEmpty => ports.map(_.toProto)
-      case _ =>
-        runSpec.container.withFilter(_.portMappings.nonEmpty).map { c =>
-          // The run spec uses bridge and user modes with portMappings, use them to create the Port messages
-          c.portMappings.zip(hostPorts).collect {
-            case (portMapping, None) =>
-              // No host port has been defined. See PortsMatcher.mappedPortRanges, use container port instead.
-              val updatedPortMapping =
-                portMapping.copy(labels = portMapping.labels + ("network-scope" -> "container"))
-              PortMappingSerializer.toMesosPort(updatedPortMapping, portMapping.containerPort)
-            case (portMapping, Some(hostPort)) =>
-              val updatedPortMapping = portMapping.copy(labels = portMapping.labels + ("network-scope" -> "host"))
-              PortMappingSerializer.toMesosPort(updatedPortMapping, hostPort)
-          }
-        }.getOrElse(
-          // Serialize runSpec.portDefinitions to protos. The port numbers are the service ports, we need to
-          // overwrite them the port numbers assigned to this particular task.
-          runSpec.portDefinitions.zip(hostPorts).collect {
-          case (portDefinition, Some(hostPort)) =>
-            PortDefinitionSerializer.toMesosProto(portDefinition).map(_.toBuilder.setNumber(hostPort).build)
-        }.flatten
-        )
-    }
-
     val portsProto = org.apache.mesos.Protos.Ports.newBuilder
-    portsProto.addAllPorts(portProtos)
-    discoveryInfoBuilder.setPorts(portsProto)
+    portsProto.addAllPorts(PortDiscovery.generate(runSpec, hostPorts))
 
+    discoveryInfoBuilder.setPorts(portsProto)
     discoveryInfoBuilder.build
   }
 
@@ -237,7 +212,7 @@ class TaskBuilder(
 
 object TaskBuilder {
 
-  val log = LoggerFactory.getLogger(getClass)
+  private val log = LoggerFactory.getLogger(getClass)
 
   def commandInfo(
     runSpec: AppDefinition,
