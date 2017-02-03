@@ -1,5 +1,6 @@
 package mesosphere.mesos
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.health.{ MesosCommandHealthCheck, MesosHealthCheck }
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod._
@@ -11,19 +12,17 @@ import mesosphere.marathon.state.{ EnvVarString, PathId, PortAssignment, Timesta
 import mesosphere.marathon.stream.Implicits._
 import mesosphere.marathon.tasks.PortsMatch
 import org.apache.mesos.{ Protos => mesos }
-import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.Seq
 
-object TaskGroupBuilder {
-  val log = LoggerFactory.getLogger(getClass)
+object TaskGroupBuilder extends StrictLogging {
 
   // These labels are necessary for AppC images to work.
   // Given that Docker only works under linux with 64bit,
   // let's (for now) set these values to reflect that.
-  val LinuxAmd64 = Map("os" -> "linux", "arch" -> "amd64")
+  protected[mesos] val LinuxAmd64 = Map("os" -> "linux", "arch" -> "amd64")
 
-  val ephemeralVolPathPrefix = "volumes/"
+  private val ephemeralVolPathPrefix = "volumes/"
 
   case class BuilderConfig(
     acceptedResourceRoles: Set[String],
@@ -57,17 +56,17 @@ object TaskGroupBuilder {
     val taskGroup = mesos.TaskGroupInfo.newBuilder
     val portAssignments = computePortAssignments(podDefinition, resourceMatch.hostPorts)
 
-    val endpointAllocationsPerContainer: Map[String, Seq[(Endpoint, Option[Int])]] =
-      podDefinition.containers.map { c =>
+    val endpointAllocationsPerContainer: Map[String, Map[Endpoint, Option[Int]]] =
+      podDefinition.containers.flatMap { c =>
         c.endpoints.map(c.name -> _)
-      }.flatten.zip(resourceMatch.hostPorts).groupBy { case (t, hp) => t._1 }.map {
+      }.zip(resourceMatch.hostPorts).groupBy { case (t, _) => t._1 }.map {
         case (k, s) =>
-          k -> s.map { case (t, hp) => t._2 -> hp }
+          k -> s.map { case (t, hp) => t._2 -> hp }.toMap
       }
 
     podDefinition.containers.map { container =>
       computeTaskInfo(container, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments)
-        .setDiscovery(taskDiscovery(podDefinition, endpointAllocationsPerContainer.get(container.name).getOrElse(Nil)))
+        .setDiscovery(taskDiscovery(podDefinition, endpointAllocationsPerContainer.getOrElse(container.name, Map.empty)))
     }.foreach(taskGroup.addTasks)
 
     // call all configured run spec customizers here (plugin)
@@ -308,7 +307,7 @@ object TaskGroupBuilder {
 
           containerInfo.addVolumes(volume)
 
-        case e: EphemeralVolume =>
+        case _: EphemeralVolume =>
           // see the related code in computeExecutorInfo
           val volume = mesos.Volume.newBuilder()
             .setMode(mode)
@@ -450,7 +449,7 @@ object TaskGroupBuilder {
       .setScalar(mesos.Value.Scalar.newBuilder.setValue(value))
   }
 
-  private def taskDiscovery(pod: PodDefinition, allocations: Seq[(Endpoint, Option[Int])]): mesos.DiscoveryInfo = {
+  private def taskDiscovery(pod: PodDefinition, allocations: Map[Endpoint, Option[Int]]): mesos.DiscoveryInfo = {
     val ports = PortDiscovery.generate(pod.networks.contains(HostNetwork), allocations)
     mesos.DiscoveryInfo.newBuilder.setPorts(mesos.Ports.newBuilder.addAllPorts(ports))
       .setName(pod.id.toHostname)

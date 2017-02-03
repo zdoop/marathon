@@ -9,29 +9,34 @@ import scala.collection.immutable.Seq
 
 trait PortDiscovery {
 
-  def generate(hostModeNetworking: Boolean, allocations: Seq[(Endpoint, Option[Int])]): Seq[Port] = {
+  def generate(hostModeNetworking: Boolean, allocations: Map[Endpoint, Option[Int]]): Seq[Port] = {
     if (!hostModeNetworking) {
       // The run spec uses bridge and user modes with portMappings, use them to create the Port messages
-      allocations.collect {
+      val ports: Seq[Seq[Port]] = allocations.collect {
         case (ep, None) =>
           // No host port has been defined. See PortsMatcher.mappedPortRanges, use container port instead.
           val updatedEp =
             ep.copy(labels = ep.labels + NetworkScope.Container.discovery)
-          PortMappingSerializer.toMesosPorts(updatedEp, ep.containerPort.head)
+          val containerPort: Int = ep.containerPort.getOrElse(throw new IllegalStateException(
+            "expected non-empty container port in conjunction with non-host networking"
+          ))
+          PortMappingSerializer.toMesosPorts(updatedEp, containerPort)
         case (ep, Some(hostPort)) =>
           val updatedEp = ep.copy(labels = ep.labels + NetworkScope.Host.discovery)
           PortMappingSerializer.toMesosPorts(updatedEp, hostPort)
-      }.flatten
+      }(collection.breakOut)
+      ports.flatten
     } else {
       // The port numbers are the allocated ports, we need to overwrite them the port numbers assigned to this particular task.
       // network-scope is assumed to be host, no need for an additional scope label here.
-      allocations.collect {
+      val ports: Seq[Seq[Port]] = allocations.collect {
         case (ep, Some(hostPort)) =>
           PortMappingSerializer.toMesosPorts(ep, hostPort)
         case (ep, None) =>
           // should be an allocated hostPort for every endpoint when in HostNetwork mode
           throw new IllegalStateException(s"host-port not allocated for endpoint ${ep.name}")
-      }.flatten
+      }(collection.breakOut)
+      ports.flatten
     }
   }
 
