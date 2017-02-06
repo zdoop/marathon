@@ -9,32 +9,33 @@ import scala.collection.immutable.Seq
 
 trait PortDiscovery {
 
-  def generate(hostModeNetworking: Boolean, allocations: Map[Endpoint, Option[Int]]): Seq[Port] = {
+  /**
+    * @param hostModeNetworking is true if we're only using host networking (vs. bridged or container networking)
+    * @param endpoints are assumed to have had wildcard ports (e.g. 0) filled in with actual port numbers
+    */
+  def generate(hostModeNetworking: Boolean, endpoints: Seq[Endpoint]): Seq[Port] = {
     if (!hostModeNetworking) {
-      // The run spec uses bridge and user modes with portMappings, use them to create the Port messages
-      val ports: Seq[Seq[Port]] = allocations.collect {
-        case (ep, None) =>
-          // No host port has been defined. See PortsMatcher.mappedPortRanges, use container port instead.
-          val updatedEp =
-            ep.copy(labels = ep.labels + NetworkScope.Container.discovery)
-          val containerPort: Int = ep.containerPort.getOrElse(throw new IllegalStateException(
-            "expected non-empty container port in conjunction with non-host networking"
-          ))
-          PortMappingSerializer.toMesosPorts(updatedEp, containerPort)
-        case (ep, Some(hostPort)) =>
-          val updatedEp = ep.copy(labels = ep.labels + NetworkScope.Host.discovery)
-          PortMappingSerializer.toMesosPorts(updatedEp, hostPort)
+      // The run spec uses bridge and user modes with portMappings, use them to create the Port messages.
+      // Note: pods only work with Mesos containerizer, which doesn't yet have bridge or port-mapping support, so
+      // we MUST use network-scope=container for any advertised ports here. This is distinctly different than how apps
+      // are implemented, which (for now) advertise network-scope=host unless there's no host-port specified (apps
+      // support bridged mode and port mappings, and so advertising the host scope can lead to better perf).
+      val ports: Seq[Seq[Port]] = endpoints.map { ep =>
+        val updatedEp = ep.copy(labels = ep.labels + NetworkScope.Container.discovery)
+        val containerPort: Int = ep.containerPort.getOrElse(throw new IllegalStateException(
+          "expected non-empty container port in conjunction with non-host networking"
+        ))
+        PortMappingSerializer.toMesosPorts(updatedEp, containerPort)
       }(collection.breakOut)
       ports.flatten
     } else {
       // The port numbers are the allocated ports, we need to overwrite them the port numbers assigned to this particular task.
       // network-scope is assumed to be host, no need for an additional scope label here.
-      val ports: Seq[Seq[Port]] = allocations.collect {
-        case (ep, Some(hostPort)) =>
-          PortMappingSerializer.toMesosPorts(ep, hostPort)
-        case (ep, None) =>
-          // should be an allocated hostPort for every endpoint when in HostNetwork mode
-          throw new IllegalStateException(s"host-port not allocated for endpoint ${ep.name}")
+      val ports: Seq[Seq[Port]] = endpoints.map { ep =>
+        val hostPort: Int = ep.hostPort.getOrElse(throw new IllegalStateException(
+          "expected non-empty host port in conjunction with host networking"
+        ))
+        PortMappingSerializer.toMesosPorts(ep, hostPort)
       }(collection.breakOut)
       ports.flatten
     }

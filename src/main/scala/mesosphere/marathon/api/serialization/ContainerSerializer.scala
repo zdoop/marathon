@@ -273,9 +273,9 @@ object PortMappingSerializer {
   /**
     * Generate mesos ports for some endpoint: one port is generated for each endpoint protocol.
     */
-  def toMesosPorts(ep: Endpoint, effectiveHostPort: Int): Seq[mesos.Protos.Port] = {
+  def toMesosPorts(ep: Endpoint, effectivePort: Int): Seq[mesos.Protos.Port] = {
     val builder = mesos.Protos.Port.newBuilder
-      .setNumber(effectiveHostPort)
+      .setNumber(effectivePort)
       .setName(ep.name)
 
     if (ep.labels.nonEmpty) {

@@ -53,21 +53,24 @@ object TaskGroupBuilder extends StrictLogging {
       instanceId,
       offer.getFrameworkId)
 
-    val taskGroup = mesos.TaskGroupInfo.newBuilder
-    val portAssignments = computePortAssignments(podDefinition, resourceMatch.hostPorts)
-
-    val endpointAllocationsPerContainer: Map[String, Map[Endpoint, Option[Int]]] =
+    val endpointAllocationsPerContainer: Map[String, Seq[Endpoint]] =
       podDefinition.containers.flatMap { c =>
         c.endpoints.map(c.name -> _)
       }.zip(resourceMatch.hostPorts).groupBy { case (t, _) => t._1 }.map {
         case (k, s) =>
-          k -> s.map { case (t, hp) => t._2 -> hp }.toMap
+          k -> s.map { case (t, hp) => t._2.copy(hostPort = hp) }
       }
 
-    podDefinition.containers.map { container =>
-      computeTaskInfo(container, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments)
-        .setDiscovery(taskDiscovery(podDefinition, endpointAllocationsPerContainer.getOrElse(container.name, Map.empty)))
-    }.foreach(taskGroup.addTasks)
+    val taskGroup = mesos.TaskGroupInfo.newBuilder.addAllTasks(
+      podDefinition.containers.map { container =>
+        val endpoints = endpointAllocationsPerContainer.getOrElse(container.name, Nil)
+        val portAssignments = computePortAssignments(podDefinition, endpoints)
+
+        computeTaskInfo(container, podDefinition, offer, instanceId, resourceMatch.hostPorts, config, portAssignments)
+          .setDiscovery(taskDiscovery(podDefinition, endpoints))
+          .build
+      }
+    )
 
     // call all configured run spec customizers here (plugin)
     runSpecTaskProcessor.taskGroup(podDefinition, executorInfo, taskGroup)
@@ -353,21 +356,21 @@ object TaskGroupBuilder extends StrictLogging {
     }
   }
 
+  /**
+    * @param podDefinition is queried to determine networking mode
+    * @param endpoints are assumed to have had all wildcard ports (e.g. 0) filled in with real values
+    */
   private[this] def computePortAssignments(
     podDefinition: PodDefinition,
-    hostPorts: Seq[Option[Int]]): Seq[PortAssignment] = {
-
-    assume(
-      podDefinition.endpoints.size == hostPorts.size,
-      s"Endpoints without resolved host ports: ${podDefinition.endpoints.size} hostPorts: ${hostPorts.size}")
+    endpoints: Seq[Endpoint]): Seq[PortAssignment] = {
 
     val isHostModeNetworking = podDefinition.networks.contains(HostNetwork)
 
-    podDefinition.endpoints.zip(hostPorts).map { entry =>
+    endpoints.map { ep =>
       PortAssignment(
-        portName = Some(entry._1.name),
-        hostPort = entry._2.find(_ => isHostModeNetworking),
-        containerPort = entry._1.containerPort.find(_ => !isHostModeNetworking),
+        portName = Some(ep.name),
+        hostPort = ep.hostPort.find(_ => isHostModeNetworking),
+        containerPort = ep.containerPort.find(_ => !isHostModeNetworking),
         // we don't need these for health checks proto generation, presumably because we can't definitively know,
         // in all cases, the full network address of the health check until the task is actually launched.
         effectiveIpAddress = None,
@@ -449,8 +452,8 @@ object TaskGroupBuilder extends StrictLogging {
       .setScalar(mesos.Value.Scalar.newBuilder.setValue(value))
   }
 
-  private def taskDiscovery(pod: PodDefinition, allocations: Map[Endpoint, Option[Int]]): mesos.DiscoveryInfo = {
-    val ports = PortDiscovery.generate(pod.networks.contains(HostNetwork), allocations)
+  private def taskDiscovery(pod: PodDefinition, endpoints: Seq[Endpoint]): mesos.DiscoveryInfo = {
+    val ports = PortDiscovery.generate(pod.networks.contains(HostNetwork), endpoints)
     mesos.DiscoveryInfo.newBuilder.setPorts(mesos.Ports.newBuilder.addAllPorts(ports))
       .setName(pod.id.toHostname)
       .setVisibility(org.apache.mesos.Protos.DiscoveryInfo.Visibility.FRAMEWORK)
