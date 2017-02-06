@@ -9,7 +9,7 @@ object NetworkScope {
 
   implicit class NetworkScopeDiscoveryInfo(scope: NetworkScope) {
     /** @return a port discovery label in the form of a string tuple */
-    def discovery: Tuple2[String, String] = "network-scope" -> scope.toString
+    def discovery: (String, String) = "network-scope" -> scope.name
   }
 
   case object Container extends NetworkScope {

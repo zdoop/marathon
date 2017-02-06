@@ -1,5 +1,6 @@
 package mesosphere.mesos
 
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon._
 import mesosphere.marathon.api.serialization.ContainerSerializer
 import mesosphere.marathon.core.health.MesosHealthCheck
@@ -11,7 +12,6 @@ import mesosphere.marathon.stream.Implicits._
 import mesosphere.mesos.ResourceMatcher.ResourceMatch
 import org.apache.mesos.Protos.Environment._
 import org.apache.mesos.Protos.{ DiscoveryInfo => _, HealthCheck => _, _ }
-import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.Seq
 
@@ -19,9 +19,7 @@ class TaskBuilder(
     runSpec: AppDefinition,
     newTaskId: PathId => Task.Id,
     config: MarathonConf,
-    runSpecTaskProc: RunSpecTaskProcessor = RunSpecTaskProcessor.empty) {
-
-  import TaskBuilder.log
+    runSpecTaskProc: RunSpecTaskProcessor = RunSpecTaskProcessor.empty) extends StrictLogging {
 
   def build(
     offer: Offer,
@@ -101,7 +99,7 @@ class TaskBuilder(
 
     if (mesosHealthChecks.size > 1) {
       val numUnusedChecks = mesosHealthChecks.size - 1
-      log.warn(
+      logger.warn(
         "Mesos supports up to one health check per task.\n" +
           s"Task [$taskId] will run without " +
           s"$numUnusedChecks of its defined health checks."
@@ -210,9 +208,7 @@ class TaskBuilder(
   }
 }
 
-object TaskBuilder {
-
-  private val log = LoggerFactory.getLogger(getClass)
+object TaskBuilder extends StrictLogging {
 
   def commandInfo(
     runSpec: AppDefinition,
