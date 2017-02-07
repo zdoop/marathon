@@ -69,7 +69,14 @@ trait ContainerSpec {
   val labels: Map[String, String]
 }
 
+/**
+  * A network definition.
+  */
 trait NetworkSpec {
+
+  /**
+    * Optional labels for a given network, may be empty.
+    */
   val labels: Map[String, String]
 }
 
@@ -88,5 +95,8 @@ trait PodSpec extends RunSpec {
     */
   val env: Map[String, EnvVarValue]
 
+  /**
+    * The networks that this pod will be a member of.
+    */
   val networks: Seq[NetworkSpec]
 }
