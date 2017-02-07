@@ -69,6 +69,10 @@ trait ContainerSpec {
   val labels: Map[String, String]
 }
 
+trait NetworkSpec {
+  val labels: Map[String, String]
+}
+
 /**
   * A pod is a run spec that launches a task group.
   */
@@ -83,4 +87,6 @@ trait PodSpec extends RunSpec {
     * The environment shared for all containers inside this pod.
     */
   val env: Map[String, EnvVarValue]
+
+  val networks: Seq[NetworkSpec]
 }
