@@ -39,8 +39,8 @@ trait PortDiscovery {
     }
 
   def generate(runSpec: AppDefinition, hostPorts: Seq[Option[Int]]): Seq[Port] = {
-    val hasDockerNetworking = runSpec.container.map(_.docker.nonEmpty).getOrElse(false)
-    (hasDockerNetworking, runSpec.ipAddress) match {
+    val usesDockerContainerizer = runSpec.container.exists(_.docker.nonEmpty)
+    (usesDockerContainerizer, runSpec.ipAddress) match {
       case (false, Some(IpAddress(_, _, DiscoveryInfo(ports), _))) if ports.nonEmpty => ports.map { port =>
         // host ports are never used with mesos containerizer IP/CT in this case, so we can assign
         // container network-scope with confidence here.
