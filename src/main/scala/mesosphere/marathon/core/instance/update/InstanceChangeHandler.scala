@@ -1,6 +1,7 @@
 package mesosphere.marathon.core.instance.update
 
 import akka.Done
+import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.event.MarathonEvent
 import mesosphere.marathon.core.instance.Instance.InstanceState
@@ -8,6 +9,7 @@ import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.{ PathId, Timestamp }
 
 import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 /**
   * A consumer interested in instance change events.
@@ -16,10 +18,25 @@ import scala.concurrent.Future
   * [[mesosphere.marathon.core.task.tracker.TaskStateOpProcessor]] for every change
   * after the change has been persisted.
   */
-// TODO(PODS): rename to InstanceUpdateHandler for consistency
-trait InstanceChangeHandler {
+trait InstanceChangeHandler extends StrictLogging {
   def name: String
   def process(update: InstanceChange): Future[Done]
+
+  def continueOnError(name: String, update: InstanceChange)(handle: (InstanceChange) => Future[Done]): Future[Done] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val maybeProcessed: Option[Future[Done]] = Option(handle(update))
+    maybeProcessed match {
+      case Some(processed) =>
+        processed.recover {
+          case NonFatal(e) =>
+            logger.error(s"while executing step $name for [${update.id.idString}], continue with other steps", e)
+            Done
+        }
+      case None =>
+        logger.error(s"step $name for [${update.id.idString}] returned null, continue with other steps")
+        Future.successful(Done)
+    }
+  }
 }
 
 /**

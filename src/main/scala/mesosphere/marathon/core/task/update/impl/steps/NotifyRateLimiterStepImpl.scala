@@ -26,7 +26,7 @@ class NotifyRateLimiterStepImpl @Inject() (
 
   override def name: String = "notifyRateLimiter"
 
-  override def process(update: InstanceChange): Future[Done] = {
+  override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
     if (limitWorthy(update.condition)) {
       notifyRateLimiter(update.runSpecId, update.instance.runSpecVersion.toOffsetDateTime)
     } else {

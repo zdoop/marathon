@@ -14,7 +14,6 @@ import mesosphere.marathon.core.flow.FlowModule
 import mesosphere.marathon.core.group.GroupManagerModule
 import mesosphere.marathon.core.health.HealthModule
 import mesosphere.marathon.core.history.HistoryModule
-import mesosphere.marathon.core.instance.update.InstanceChangeHandler
 import mesosphere.marathon.core.launcher.LauncherModule
 import mesosphere.marathon.core.launchqueue.LaunchQueueModule
 import mesosphere.marathon.core.leadership.LeadershipModule
@@ -24,6 +23,7 @@ import mesosphere.marathon.core.matcher.reconcile.OfferMatcherReconciliationModu
 import mesosphere.marathon.core.plugin.PluginModule
 import mesosphere.marathon.core.pod.PodModule
 import mesosphere.marathon.core.readiness.ReadinessModule
+import mesosphere.marathon.core.scheduling.{ InstanceChangeBehaviorSteps, SchedulingModuleImpl }
 import mesosphere.marathon.core.task.bus.TaskBusModule
 import mesosphere.marathon.core.task.jobs.TaskJobsModule
 import mesosphere.marathon.core.task.termination.TaskTerminationModule
@@ -53,7 +53,7 @@ class CoreModuleImpl @Inject() (
   clock: Clock,
   storage: StorageProvider,
   scheduler: Provider[DeploymentService],
-  instanceUpdateSteps: Seq[InstanceChangeHandler])
+  instanceChangeBehaviorSteps: InstanceChangeBehaviorSteps)
     extends CoreModule {
 
   // INFRASTRUCTURE LAYER
@@ -75,9 +75,10 @@ class CoreModuleImpl @Inject() (
   // TASKS
 
   override lazy val taskBusModule = new TaskBusModule()
+  override lazy val schedulingModule = new SchedulingModuleImpl(instanceChangeBehaviorSteps, metrics)
   override lazy val taskTrackerModule =
-    new InstanceTrackerModule(clock, metrics, marathonConf, leadershipModule,
-      storageModule.instanceRepository, instanceUpdateSteps)(actorsModule.materializer)
+    new InstanceTrackerModule(clock, metrics, marathonConf, schedulingModule, leadershipModule,
+      storageModule.instanceRepository)(actorsModule.materializer)
   override lazy val taskJobsModule = new TaskJobsModule(marathonConf, leadershipModule, clock)
   override lazy val storageModule = StorageModule(
     marathonConf)(

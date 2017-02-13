@@ -66,15 +66,6 @@ class InstanceOpProcessorImplTest extends AkkaUnitTest {
       override def get(): TaskStatusEmitter = taskStatusEmitter
     }
     lazy val guiceModule = new CoreGuiceModule
-    // Use module method to ensure that we keep the list of steps in sync with the test.
-    lazy val statusUpdateSteps = guiceModule.taskStatusUpdateSteps(
-      notifyHealthCheckManager,
-      notifyRateLimiter,
-      notifyLaunchQueue,
-      emitUpdate,
-      postToEventStream,
-      scaleApp
-    )
 
     // task status update steps
     lazy val notifyHealthCheckManager = new NotifyHealthCheckManagerStepImpl(healthCheckManagerProvider)

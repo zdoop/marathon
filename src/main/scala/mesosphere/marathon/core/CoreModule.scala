@@ -13,6 +13,7 @@ import mesosphere.marathon.core.leadership.LeadershipModule
 import mesosphere.marathon.core.plugin.PluginModule
 import mesosphere.marathon.core.pod.PodModule
 import mesosphere.marathon.core.readiness.ReadinessModule
+import mesosphere.marathon.core.scheduling.SchedulingModule
 import mesosphere.marathon.core.task.bus.TaskBusModule
 import mesosphere.marathon.core.task.jobs.TaskJobsModule
 import mesosphere.marathon.core.task.termination.TaskTerminationModule
@@ -44,4 +45,5 @@ trait CoreModule {
   def taskJobsModule: TaskJobsModule
   def taskTrackerModule: InstanceTrackerModule
   def taskTerminationModule: TaskTerminationModule
+  def schedulingModule: SchedulingModule
 }

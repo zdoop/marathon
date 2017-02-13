@@ -5,13 +5,14 @@ import akka.Done
 import akka.actor.{ Actor, ActorRef, Props, Terminated }
 import akka.testkit.{ TestActorRef, TestProbe }
 import com.codahale.metrics.MetricRegistry
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ Config, ConfigFactory }
 import mesosphere.AkkaUnitTest
 import mesosphere.marathon.core.instance.update.{ InstanceChangedEventsGenerator, InstanceUpdateEffect, InstanceUpdateOperation }
 import mesosphere.marathon.core.instance.{ TestInstanceBuilder, TestTaskBuilder }
+import mesosphere.marathon.core.scheduling.behavior.InstanceChangeBehavior
 import mesosphere.marathon.core.task.TaskCondition
 import mesosphere.marathon.core.task.bus.TaskStatusUpdateTestHelper
-import mesosphere.marathon.core.task.tracker.{ InstanceTracker, InstanceTrackerUpdateStepProcessor }
+import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.PathId
 
@@ -21,7 +22,7 @@ import scala.concurrent.{ ExecutionContext, Future }
   * Most of the functionality is tested at a higher level in [[mesosphere.marathon.tasks.InstanceTrackerImplTest]].
   */
 class InstanceTrackerActorTest extends AkkaUnitTest {
-  override lazy val akkaConfig =
+  override lazy val akkaConfig: Config =
     ConfigFactory.parseString(""" akka.actor.guardian-supervisor-strategy = "akka.actor.StoppingSupervisorStrategy" """)
       .withFallback(ConfigFactory.load())
 
@@ -135,7 +136,7 @@ class InstanceTrackerActorTest extends AkkaUnitTest {
       f.actorMetrics.stagedCount.getValue should be(0)
 
       And("update steps have been processed 2 times")
-      verify(f.stepProcessor, times(2)).process(any)(any[ExecutionContext])
+      verify(f.instanceChangeBehavior, times(2)).handle(any)(any[ExecutionContext])
     }
 
     "taskTrackerActor correctly updates metrics for updated tasks" in {
@@ -167,7 +168,7 @@ class InstanceTrackerActorTest extends AkkaUnitTest {
       f.actorMetrics.runningCount.getValue should be(3)
       f.actorMetrics.stagedCount.getValue should be(0)
       And("update steps are processed")
-      verify(f.stepProcessor).process(any)(any[ExecutionContext])
+      verify(f.instanceChangeBehavior).handle(any)(any[ExecutionContext])
     }
 
     "taskTrackerActor correctly updates metrics for created tasks" in {
@@ -195,7 +196,7 @@ class InstanceTrackerActorTest extends AkkaUnitTest {
       f.actorMetrics.runningCount.getValue should be(2)
       f.actorMetrics.stagedCount.getValue should be(2)
       And("update steps are processed")
-      verify(f.stepProcessor).process(any)(any[ExecutionContext])
+      verify(f.instanceChangeBehavior).handle(any)(any[ExecutionContext])
     }
   }
   class Fixture {
@@ -214,15 +215,15 @@ class InstanceTrackerActorTest extends AkkaUnitTest {
     })
 
     def updaterProps(trackerRef: ActorRef): Props = spyActor // linter:ignore:UnusedParameter
-    lazy val taskLoader = mock[InstancesLoader]
-    lazy val stepProcessor = mock[InstanceTrackerUpdateStepProcessor]
+    lazy val taskLoader: InstancesLoader = mock[InstancesLoader]
+    lazy val instanceChangeBehavior: InstanceChangeBehavior = mock[InstanceChangeBehavior]
     lazy val metrics = new Metrics(new MetricRegistry)
     lazy val actorMetrics = new InstanceTrackerActor.ActorMetrics(metrics)
     val eventsGenerator = InstanceChangedEventsGenerator
 
-    stepProcessor.process(any)(any[ExecutionContext]) returns Future.successful(Done)
+    instanceChangeBehavior.handle(any)(any[ExecutionContext]) returns Future.successful(Done)
 
-    lazy val taskTrackerActor = TestActorRef[InstanceTrackerActor](InstanceTrackerActor.props(actorMetrics, taskLoader, stepProcessor, updaterProps))
+    lazy val taskTrackerActor: ActorRef = TestActorRef[InstanceTrackerActor](InstanceTrackerActor.props(actorMetrics, taskLoader, instanceChangeBehavior, updaterProps))
 
     def verifyNoMoreInteractions(): Unit = {
       noMoreInteractions(taskLoader)

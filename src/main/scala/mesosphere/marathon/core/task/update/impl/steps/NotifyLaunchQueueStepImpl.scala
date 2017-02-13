@@ -18,7 +18,7 @@ class NotifyLaunchQueueStepImpl @Inject() (launchQueueProvider: Provider[LaunchQ
 
   private[this] lazy val launchQueue = launchQueueProvider.get()
 
-  override def process(update: InstanceChange): Future[Done] = {
+  override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
     launchQueue.notifyOfInstanceUpdate(update)
   }
 }

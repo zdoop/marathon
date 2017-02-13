@@ -28,7 +28,7 @@ class ScaleAppUpdateStepImpl @Inject() (
 
   override def name: String = "scaleApp"
 
-  override def process(update: InstanceChange): Future[Done] = {
+  override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
     // TODO(PODS): it should be up to a tbd TaskUnreachableBehavior how to handle Unreachable
     calcScaleEvent(update).foreach(event => schedulerActor ! event)
     Future.successful(Done)

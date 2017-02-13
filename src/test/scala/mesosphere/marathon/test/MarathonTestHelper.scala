@@ -1,6 +1,7 @@
 package mesosphere.marathon
 package test
 
+import akka.Done
 import akka.stream.Materializer
 import com.codahale.metrics.MetricRegistry
 import com.github.fge.jackson.JsonLoader
@@ -14,9 +15,11 @@ import mesosphere.marathon.core.base.Clock
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.instance.Instance.InstanceState
-import mesosphere.marathon.core.instance.update.InstanceChangeHandler
+import mesosphere.marathon.core.instance.update.InstanceChange
 import mesosphere.marathon.core.launcher.impl.{ ReservationLabels, TaskLabels }
 import mesosphere.marathon.core.leadership.LeadershipModule
+import mesosphere.marathon.core.scheduling.SchedulingModule
+import mesosphere.marathon.core.scheduling.behavior.InstanceChangeBehavior
 import mesosphere.marathon.core.storage.store.impl.memory.InMemoryPersistenceStore
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.tracker.{ InstanceTracker, InstanceTrackerModule }
@@ -34,7 +37,7 @@ import org.apache.mesos.Protos._
 import org.apache.mesos.{ Protos => Mesos }
 import play.api.libs.json.Json
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Random
 
 object MarathonTestHelper {
@@ -319,10 +322,14 @@ object MarathonTestHelper {
 
     implicit val ctx = ExecutionContext.global
     implicit val m = metrics
+    val schedulingModule: SchedulingModule = new SchedulingModule {
+      override def instanceChangeBehavior: InstanceChangeBehavior = new InstanceChangeBehavior {
+        override def handle(change: InstanceChange)(implicit ec: ExecutionContext): Future[Done] = Future.successful(Done)
+      }
+    }
     val instanceRepo = store.getOrElse(InstanceRepository.inMemRepository(new InMemoryPersistenceStore()))
-    val updateSteps = Seq.empty[InstanceChangeHandler]
 
-    new InstanceTrackerModule(clock, metrics, defaultConfig(), leadershipModule, instanceRepo, updateSteps) {
+    new InstanceTrackerModule(clock, metrics, defaultConfig(), schedulingModule, leadershipModule, instanceRepo) {
       // some tests create only one actor system but create multiple task trackers
       override protected lazy val instanceTrackerActorName: String = s"taskTracker_${Random.alphanumeric.take(10).mkString}"
     }

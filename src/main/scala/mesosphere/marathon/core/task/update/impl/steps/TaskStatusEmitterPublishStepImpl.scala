@@ -23,7 +23,7 @@ class TaskStatusEmitterPublishStepImpl @Inject() (
 
   override def name: String = "emitUpdate"
 
-  override def process(update: InstanceChange): Future[Done] = {
+  override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
     taskStatusEmitter.publish(update)
     Future.successful(Done)
   }

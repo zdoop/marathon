@@ -13,7 +13,6 @@ import mesosphere.marathon.core.election.ElectionService
 import mesosphere.marathon.core.event.HttpCallbackSubscriptionService
 import mesosphere.marathon.core.group.GroupManager
 import mesosphere.marathon.core.health.HealthCheckManager
-import mesosphere.marathon.core.instance.update.InstanceChangeHandler
 import mesosphere.marathon.core.launcher.OfferProcessor
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.leadership.{ LeadershipCoordinator, LeadershipModule }
@@ -25,14 +24,12 @@ import mesosphere.marathon.core.task.jobs.TaskJobsModule
 import mesosphere.marathon.core.task.termination.KillService
 import mesosphere.marathon.core.task.tracker.{ InstanceCreationHandler, InstanceTracker, TaskStateOpProcessor }
 import mesosphere.marathon.core.task.update.TaskStatusUpdateProcessor
-import mesosphere.marathon.core.task.update.impl.steps._
 import mesosphere.marathon.core.task.update.impl.{ TaskStatusUpdateProcessorImpl, ThrottlingTaskStatusUpdateProcessor }
 import mesosphere.marathon.plugin.auth.{ Authenticator, Authorizer }
 import mesosphere.marathon.plugin.http.HttpRequestHandler
 import mesosphere.marathon.storage.migration.Migration
 import mesosphere.marathon.storage.repository._
 import mesosphere.marathon.util.WorkQueue
-import mesosphere.marathon.{ MarathonConf, ModuleNames, PrePostDriverCallback }
 import org.eclipse.jetty.servlets.EventSourceServlet
 
 import scala.collection.immutable
@@ -146,37 +143,6 @@ class CoreGuiceModule extends AbstractModule {
 
   @Provides @Singleton
   def podSystem(coreModule: CoreModule): PodManager = coreModule.podModule.podManager
-
-  @Provides @Singleton
-  def taskStatusUpdateSteps(
-    notifyHealthCheckManagerStepImpl: NotifyHealthCheckManagerStepImpl,
-    notifyRateLimiterStepImpl: NotifyRateLimiterStepImpl,
-    notifyLaunchQueueStepImpl: NotifyLaunchQueueStepImpl,
-    taskStatusEmitterPublishImpl: TaskStatusEmitterPublishStepImpl,
-    postToEventStreamStepImpl: PostToEventStreamStepImpl,
-    scaleAppUpdateStepImpl: ScaleAppUpdateStepImpl): Seq[InstanceChangeHandler] = {
-
-    // This is a sequence on purpose. The specified steps are executed in order for every
-    // task status update.
-    // This way we make sure that e.g. the taskTracker already reflects the changes for the update
-    // (updateTaskTrackerStepImpl) before we notify the launch queue (notifyLaunchQueueStepImpl).
-
-    // The task tracker is updated before any of these steps are processed.
-    Seq(
-      // Subsequent steps (for example, the health check subsystem) depend on
-      // task tracker lookup to determine the routable host address for running
-      // tasks.  In case this status update is the first TASK_RUNNING update
-      // in IP-per-container mode, we need to store the assigned container
-      // address reliably before attempting to initiate health checks, or
-      // publish events to the bus.
-      ContinueOnErrorStep(notifyHealthCheckManagerStepImpl),
-      ContinueOnErrorStep(notifyRateLimiterStepImpl),
-      ContinueOnErrorStep(notifyLaunchQueueStepImpl),
-      ContinueOnErrorStep(taskStatusEmitterPublishImpl),
-      ContinueOnErrorStep(postToEventStreamStepImpl),
-      ContinueOnErrorStep(scaleAppUpdateStepImpl)
-    )
-  }
 
   @Provides @Singleton
   def pluginHttpRequestHandler(coreModule: CoreModule): Seq[HttpRequestHandler] = {

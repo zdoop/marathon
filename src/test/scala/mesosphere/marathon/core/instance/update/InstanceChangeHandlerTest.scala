@@ -1,43 +1,28 @@
 package mesosphere.marathon
-package core.task.update.impl.steps
+package core.instance.update
 
 import akka.Done
 import mesosphere.UnitTest
 import mesosphere.marathon.core.instance.TestInstanceBuilder
-import mesosphere.marathon.core.instance.update.{ InstanceChange, InstanceChangeHandler }
 import mesosphere.marathon.core.task.bus.TaskStatusUpdateTestHelper
 import mesosphere.marathon.state.PathId
 import mesosphere.marathon.test.CaptureLogEvents
 
 import scala.concurrent.Future
 
-class ContinueOnErrorStepTest extends UnitTest {
-  "ContinueOnErrorStep" should {
-    "name uses nested name" in {
-      object nested extends InstanceChangeHandler {
-        override def name: String = "nested"
-
-        override def process(update: InstanceChange): Future[Done] = {
-          throw new scala.RuntimeException("not implemted")
-        }
-      }
-
-      ContinueOnErrorStep(nested).name should equal("continueOnError(nested)")
-    }
-
+class InstanceChangeHandlerTest extends UnitTest {
+  "ContinueOnError" should {
     "A successful step should not produce logging output" in {
       val f = new Fixture
       Given("a nested step that is always successful")
-      f.processUpdate(f.nested).asInstanceOf[Future[Unit]] returns Future.successful(())
+      val handler = f.successfulHandler
 
       When("executing the step")
       val logEvents = CaptureLogEvents.forBlock {
-        val resultFuture = f.processUpdate(ContinueOnErrorStep(f.nested)) // linter:ignore:UndesirableTypeInference
+        val resultFuture = handler.process(f.runningUpdate())
         resultFuture.futureValue
       }
 
-      Then("it should execute the nested step")
-      f.processUpdate(verify(f.nested, times(1)))
       And("not produce any logging output")
       logEvents.filter(_.getMessage.contains(s"[${f.dummyInstance.instanceId.idString}]")) should be(empty)
     }
@@ -45,17 +30,14 @@ class ContinueOnErrorStepTest extends UnitTest {
     "A failing step should log the error but proceed" in {
       val f = new Fixture
       Given("a nested step that always fails")
-      f.nested.name returns "nested"
-      f.processUpdate(f.nested).asInstanceOf[Future[Unit]] returns Future.failed(new RuntimeException("error!"))
+      val handler = f.failingHandler
 
       When("executing the step")
       val logEvents = CaptureLogEvents.forBlock {
-        val resultFuture = f.processUpdate(ContinueOnErrorStep(f.nested)) // linter:ignore:UndesirableTypeInference
+        val resultFuture = handler.process(f.runningUpdate())
         resultFuture.futureValue
       }
 
-      Then("it should execute the nested step")
-      f.processUpdate(verify(f.nested, times(1)))
       And("produce an error message in the log")
       logEvents.map(_.toString) should contain(
         s"[ERROR] while executing step nested for [${f.dummyInstance.instanceId.idString}], continue with other steps"
@@ -66,10 +48,19 @@ class ContinueOnErrorStepTest extends UnitTest {
     private[this] val appId: PathId = PathId("/test")
     val dummyInstanceBuilder = TestInstanceBuilder.newBuilderWithLaunchedTask(appId)
     val dummyInstance = dummyInstanceBuilder.getInstance()
-    val nested = mock[InstanceChangeHandler]
-
-    def processUpdate(step: InstanceChangeHandler): Future[_] = {
-      step.process(TaskStatusUpdateTestHelper.running(dummyInstanceBuilder.getInstance()).wrapped)
+    val successfulHandler = new InstanceChangeHandler {
+      override def name = "nested"
+      override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
+        Future.successful(Done)
+      }
     }
+    val failingHandler = new InstanceChangeHandler {
+      override def name = "nested"
+      override def process(update: InstanceChange): Future[Done] = continueOnError(name, update) { update =>
+        Future.failed(new RuntimeException("failed"))
+      }
+    }
+
+    def runningUpdate(): InstanceChange = TaskStatusUpdateTestHelper.running(dummyInstanceBuilder.getInstance()).wrapped
   }
 }
