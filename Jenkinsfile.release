@@ -6,7 +6,7 @@ node('shakedown') {
 
     properties([
       parameters([
-        string(name: 'commit-hash',
+        string(name: 'commitHash',
           defaultValue: '',
           description: 'The commit that should be release'
         )]
