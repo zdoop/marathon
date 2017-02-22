@@ -475,8 +475,7 @@ def wait_for_task(service, task, timeout_sec=120):
 
 
 def get_pod_tasks(pod_id):
-    if pod_id.startswith("/"):
-        pod_id = pod_id[1:]
+    pod_id = clean_pod_id(pod_id)
     pod_tasks = []
     tasks = get_marathon_tasks()
     for task in tasks:
@@ -485,6 +484,12 @@ def get_pod_tasks(pod_id):
             pod_tasks.append(task)
 
     return pod_tasks
+
+
+def clean_pod_id(pod_id):
+    if pod_id.startswith("/"):
+        pod_id = pod_id[1:]
+    return pod_id
 
 
 def marathon_version():
