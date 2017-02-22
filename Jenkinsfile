@@ -133,7 +133,7 @@ node('JenkinsMarathonCI-Debian8') {
              //         --build-arg MESOS_VERSION=${mesosVersion} \
              //         \$(pwd)
              //    """
-             // }
+             }
         )
       }
       stage("6. Archive Artifacts") {
