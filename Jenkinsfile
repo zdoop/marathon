@@ -144,7 +144,12 @@ node('JenkinsMarathonCI-Debian8') {
          // archiveArtifacts artifacts: "marathon-pkg/marathon*.rpm", allowEmptyArchive: false
       }
 
-      input message: 'Release build?'
+      milestone()
+      def releaseInput = input(
+        id: 'releaseInput', message: 'Release build?', parameters: [
+            [$class: 'TextParameterDefinition', description: 'Version', name: 'version']
+        ])
+      echo("Version: " + releaseInput['version'])
     } catch (Exception err) {
         currentBuild.result = 'FAILURE'
     } finally {
