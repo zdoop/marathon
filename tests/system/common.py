@@ -367,7 +367,10 @@ def stop_all_deployments():
     client = marathon.create_client()
     deployments = client.get_deployments()
     for deployment in deployments:
-        client.stop_deployment(deployment['id'])
+        try:
+            client.stop_deployment(deployment['id'])
+        except:
+            pass
 
 
 def delete_all_apps_wait():
