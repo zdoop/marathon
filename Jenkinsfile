@@ -155,7 +155,7 @@ node('JenkinsMarathonCI-Debian8') {
     }
 }
 
-stage "Release" {
+stage("Release") {
     milestone()
     def releaseInput = input(
       id: 'releaseInput', message: 'Release build?', parameters: [
