@@ -155,10 +155,11 @@ node('JenkinsMarathonCI-Debian8') {
     }
 }
 
-stage "Release"
-milestone()
-def releaseInput = input(
-  id: 'releaseInput', message: 'Release build?', parameters: [
-      [$class: 'TextParameterDefinition', description: 'Version', name: 'version']
-  ])
-echo("Version: " + releaseInput)
+stage "Release" {
+    milestone()
+    def releaseInput = input(
+      id: 'releaseInput', message: 'Release build?', parameters: [
+          [$class: 'TextParameterDefinition', description: 'Version', name: 'version']
+      ])
+    echo("Version: " + releaseInput)
+}
