@@ -472,10 +472,13 @@ def wait_for_task(service, task, timeout_sec=120):
 
 
 def get_pod_tasks(pod_id):
+    if pod_id.startswith("/"):
+        pod_id = pod_id[1:]
     pod_tasks = []
     tasks = get_marathon_tasks()
     for task in tasks:
-        if task['labels'][0]['value'] == pod_id:
+        if task['discovery']['name'] == pod_id:
+        # if task['labels'][0]['value'] == pod_id:
             pod_tasks.append(task)
 
     return pod_tasks
@@ -501,7 +504,7 @@ dcos_1_7 = pytest.mark.skipif('dcos_version_less_than("1.7")')
 def dcos_canonical_version():
     version = dcos_version().replace('-dev', '')
     return LooseVersion(version)
-    
+
 
 def dcos_version_less_than(version):
     return dcos_canonical_version() < LooseVersion(version)
