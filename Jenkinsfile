@@ -137,7 +137,8 @@ node('JenkinsMarathonCI-Debian8') {
         )
       }
       stage("6. Archive Artifacts") {
-          archiveArtifacts artifacts: 'target/**/classes/**', allowEmptyArchive: true
+         echo "skip"
+         // archiveArtifacts artifacts: 'target/**/classes/**', allowEmptyArchive: true
          // archiveArtifacts artifacts: 'target/marathon-runnable.jar', allowEmptyArchive: true
          // archiveArtifacts artifacts: "target/marathon-${gitCommit}.tgz", allowEmptyArchive: false
          // archiveArtifacts artifacts: "marathon-pkg/marathon*.deb", allowEmptyArchive: false
@@ -149,7 +150,7 @@ node('JenkinsMarathonCI-Debian8') {
         id: 'releaseInput', message: 'Release build?', parameters: [
             [$class: 'TextParameterDefinition', description: 'Version', name: 'version']
         ])
-      echo("Version: " + releaseInput['version'])
+      echo("Version: " + releaseInput)
     } catch (Exception err) {
         currentBuild.result = 'FAILURE'
     } finally {
