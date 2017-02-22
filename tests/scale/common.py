@@ -148,38 +148,43 @@ def count_test_app(test_obj):
 
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
-    # make sure no apps currently
-    delete_all_apps_wait2()
+    if test_obj.skipped:
+        return
 
-    test_obj.start = time.time()
-    starting_tasks = get_current_tasks()
-
-    # launch and
-    launch_complete = True
     try:
-        launch_apps2(test_obj)
-    except:
-        test_obj.add_event('Failure to fully launch')
-        launch_complete = False
         wait_for_marathon_up(test_obj)
+        delete_all_apps_wait2()
+        wait_for_marathon_up(test_obj)
+    except:
         pass
 
-    # time to finish launch
+    # launch
+    test_obj.start_test()
+    launch_results = test_obj.launch_results
+    try:
+        launch_apps2(test_obj)
+    except Exception as e:
+        launch_results.failed('Failure to launch: {}'.format(str(e)))
+        wait_for_marathon_up(test_obj)
+    else:
+        launch_results.completed()
+
+    # deployment
     try:
         time_deployment2(test_obj)
-        launch_complete = True
     except Exception as e:
-        assert False
+        msg = str(e)
+        print("************ {} *********".format(msg))
+        test_obj.deploy_results.failed(msg)
 
-    current_tasks = get_current_app_tasks(starting_tasks)
-    test_obj.add_event('undeploying {} tasks'.format(current_tasks))
-
-    # delete apps
+    # undeploy
+    wait_for_marathon_up(test_obj)
     delete_all_apps_wait2(test_obj)
+    wait_for_marathon_up(test_obj)
 
-    assert launch_complete
-
-
+# TODO: step by 1000? or wait for step
+# start scale and changed scale
+# timeouts?
 def launch_apps2(test_obj):
     client = marathon.create_client()
     count = test_obj.count
@@ -349,8 +354,6 @@ def undeployment_wait(test_obj=None):
 
 def time_deployment2(test_obj):
 
-    after_deploy_timer = None
-    after_deploy_scale = None
     deploy_results = test_obj.deploy_results
     client = marathon.create_client()
 

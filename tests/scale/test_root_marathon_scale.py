@@ -38,22 +38,33 @@ def test_instance_scale(num_apps, num_instances):
 
     current_test = initalize_test('root', 'apps', 'instances', num_apps, num_instances)
     instance_test_app(current_test)
+
+    if "failed" in current_test.status:
+        type_test_failed[get_test_style_key_base(current_test)] = True
+
     log_current_test(current_test)
 
-# @pytest.mark.parametrize("num_apps, num_instances", [
-#   (1, 1),
-#   (10, 1),
-#   (100, 1),
-#   (500, 1),
-#   (1000, 1),
-#   (5000, 1),
-#   (10000, 1),
-#   (25000, 1)
-# ])
-# def test_count_scale(num_apps, num_instances):
-#     """ Runs scale test on `num_apps` usually 1 instance each.
-#     """
-#     run_test('root', 'apps', 'count', num_apps, num_instances)
+@pytest.mark.parametrize("num_apps, num_instances", [
+  (1, 1),
+  (10, 1),
+  (100, 1),
+  (500, 1),
+  (1000, 1),
+  (5000, 1),
+  (10000, 1),
+  (25000, 1)
+])
+def test_count_scale(num_apps, num_instances):
+    """ Runs scale test on `num_apps` usually 1 instance each.
+    """
+    current_test = initalize_test('root', 'apps', 'count', num_apps, num_instances)
+    count_test_app(current_test)
+
+    if "failed" in current_test.status:
+        type_test_failed[get_test_style_key_base(current_test)] = True
+
+    log_current_test(current_test)
+
 
 
 @pytest.mark.parametrize("num_apps, num_instances", [
@@ -69,6 +80,10 @@ def test_group_scale(num_apps, num_instances):
 
     current_test = initalize_test('root', 'apps', 'group', num_apps, num_instances)
     group_test_app(current_test)
+
+    if "failed" in current_test.status:
+        type_test_failed[get_test_style_key_base(current_test)] = True
+
     log_current_test(current_test)
 
 
@@ -98,27 +113,6 @@ def has_enough_resources(need):
     """
     available = private_resources_available()
     return need.cpus <= available.cpus and need.mem <= available.mem
-
-
-def run_test(marathon_name, launch_type, test_type, num_apps, num_instances):
-    test_name = 'test_{}_{}_{}_{}_{}'.format(marathon, launch_type, test_type, num_apps, num_instances)
-    current_test = start_test(test_name)
-    test_log.append(current_test)
-    need = scaletest_resources(current_test)
-
-    if need > (private_resources_available()):
-        current_test.skip('insufficient resources')
-        return
-    if previous_style_test_failed(current_test):
-        current_test.skip('smaller scale failed')
-        return
-
-    # wait for max
-    # respond to timeouts
-    time = scale_test_apps(current_test)
-
-    if "failed" in current_test.status:
-        type_test_failed[get_test_style_key_base(current_test)] = True
 
 
 def get_test_style_key_base(current_test):
@@ -187,9 +181,12 @@ def collect_stats():
         'root_instances_human_deploy_time': [],
         'root_instances_launch_status': [],
         'root_instances_deployment_status': [],
-        'root_count': [],
         'root_count_target': [],
         'root_count_max': [],
+        'root_count_deploy_time': [],
+        'root_count_human_deploy_time': [],
+        'root_count_launch_status': [],
+        'root_count_deployment_status': [],
         'root_group_target': [],
         'root_group_max': [],
         'root_group_deploy_time': [],
@@ -243,7 +240,7 @@ def write_csv(stats, filename='scale-test.csv'):
     with open(filename, 'w') as f:
         w = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
         write_stat_lines(f, w, stats, 'root', 'instances')
-        # write_stat_lines(f, w, stats, 'root', 'count')
+        write_stat_lines(f, w, stats, 'root', 'count')
         write_stat_lines(f, w, stats, 'root', 'group')
 
 
