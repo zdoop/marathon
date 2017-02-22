@@ -19,6 +19,8 @@ node('shakedown') {
 
     stage('Release Marathon'){
       echo "stub"
+      // writeFile file: 'MANIFEST.MF', text: 'Implementation-Version: $params.version'
+      // sh "jar -ufm target/scala-2.11/marathon-assembly-1.5.0-SNAPSHOT.jar MANIFEST.MF"
     }
   }
   }
