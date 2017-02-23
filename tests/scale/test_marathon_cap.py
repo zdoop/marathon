@@ -54,8 +54,51 @@ def test_incremental_scale():
         shakedown.deployment_wait(
             app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
 
-        # Scale to 200
         client.scale_app('/cap-app', new_size)
         shakedown.deployment_wait(
             app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
         shakedown.echo("done.")
+
+
+def test_incremental_app_scale():
+    """
+    Scale number of app in steps until the first error, e.g. a timeout, is
+    reached.
+    """
+
+    batch_size = 50
+
+    cluster_info()
+    print(available_resources())
+
+    def app_def(app_id):
+        return {
+            "id": app_id,
+            "instances":  1,
+            "cmd": "for (( ; ; )); do sleep 100000000; done",
+            "cpus": 0.001,
+            "mem": 8,
+            "disk": 0,
+            "backoffFactor": 1.0,
+            "backoffSeconds": 0,
+        }
+
+    client = marathon.create_client()
+
+    for step in itertools.count(start=1):
+        shakedown.echo("Add {} apps".format(batch_size))
+
+        group_id = "/batch-{}".format(step)
+        app_ids = ("app-{}".format(i) for i in range(batch_size))
+        app_definitions = [app_def(app_id) for app_id in app_ids]
+        next_batch = {
+            "apps": app_definitions,
+            "dependencies": [],
+            "id": group_id
+        }
+
+        client.create_group(next_batch)
+        shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
+
+        shakedown.echo("done.")
+
