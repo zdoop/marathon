@@ -31,7 +31,6 @@ def test_incremental_scale():
     Scale instances of app in steps until the first error, e.g. a timeout, is
     reached.
     """
-    ensure_mom_version('1.4.0-RC7')
 
     cluster_info()
     print(available_resources())
@@ -47,19 +46,16 @@ def test_incremental_scale():
       "backoffSeconds": 0,
     }
 
-    with marathon_on_marathon():
-        # shakedown.delete_app_wait('/cap-app')
+    client = marathon.create_client()
+    client.add_app(app_def)
 
-        client = marathon.create_client()
-        client.add_app(app_def)
+    for new_size in incremental_steps(linear_step_function(step_size=1000)):
+        shakedown.echo("Scaling to {}".format(new_size))
+        shakedown.deployment_wait(
+            app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
 
-        for new_size in incremental_steps(linear_step_function(step_size=1000)):
-            shakedown.echo("Scaling to {}".format(new_size))
-            shakedown.deployment_wait(
-                app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
-
-            # Scale to 200
-            client.scale_app('/cap-app', new_size)
-            shakedown.deployment_wait(
-                app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
-            shakedown.echo("done.")
+        # Scale to 200
+        client.scale_app('/cap-app', new_size)
+        shakedown.deployment_wait(
+            app_id='cap-app', timeout=timedelta(minutes=10).total_seconds())
+        shakedown.echo("done.")
