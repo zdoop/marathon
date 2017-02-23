@@ -171,7 +171,11 @@ def count_test_app(test_obj):
 
     # deployment
     try:
-        time_deployment2(test_obj)
+        if launch_results.success:
+            time_deployment2(test_obj)
+        else:
+            test_obj.deploy_results.failed("Unable to continue based on launch failure")
+
     except Exception as e:
         msg = str(e)
         print("************ {} *********".format(msg))
@@ -182,28 +186,51 @@ def count_test_app(test_obj):
     delete_all_apps_wait2(test_obj)
     wait_for_marathon_up(test_obj)
 
-# TODO: step by 1000? or wait for step
-# start scale and changed scale
-# timeouts?
+
 def launch_apps2(test_obj):
     client = marathon.create_client()
     count = test_obj.count
     instances = test_obj.instance
+    launch_results = test_obj.launch_results
+    deploy_results = test_obj.deploy_results
+    scale_failure_count = 0
+    abort = False
+    abort_msg = ''
     for num in range(1, count + 1):
-        # after 400 and every 50 check to see if we need to wait
-        if num > 400 and num % 50 == 0:
-            deployments = len(client.get_deployments())
-            if deployments > 30:
-                # wait for deployment count to be less than a sec
-                wait_for(deployment_less_than_predicate)
-                time.sleep(1)
         try:
             client.add_app(app(num, instances))
+            scale_failure_count = 0
+
+            # every 100 adds wait for scale up
+            if not num % 100:
+                target = num * instances
+                deploy_results.set_current_scale(current_scale())
+                # wait for target
+                if count_deployment(test_obj, target):
+                    abort_msg = 'Count test launch failure at {} out of {}'.format(num, test_obj.target)
+                    test_obj.add_event(abort_msg)
+                    abort = True
+                    break
+
         except Exception as e:
-            time.sleep(1)
             test_obj.add_event('launch exception: {}'.format(str(e)))
-            # either service not available or timeout of 10s
-            wait_for_marathon_up(test_obj)
+
+            scale_failure_count = scale_failure_count + 1
+
+            # 5 tries to see if scale increases, if no abort
+            # 5 consecutive failures
+            if scale_failure_count > 5:
+                abort_msg = 'Aborting based on too many failures: {}'.format(scale_failure_count)
+                abort = True
+                # leave the loop and end the test
+                break
+            # need some time
+            else:
+                time.sleep(calculate_scale_wait_time(test_obj, scale_failure_count))
+                quiet_wait_for_marathon_up(test_obj)
+
+    if abort:
+        raise Exception(abort_msg)
 
 
 def instance_test_app(test_obj):
@@ -240,6 +267,7 @@ def instance_test_app(test_obj):
 
     # deployment
     try:
+        test_obj.reset_loop_count()
         time_deployment2(test_obj)
     except Exception as e:
         msg = str(e)
@@ -287,6 +315,7 @@ def group_test_app(test_obj):
 
     # deployment
     try:
+        test_obj.reset_loop_count()
         time_deployment2(test_obj)
     except Exception as e:
         msg = str(e)
@@ -352,6 +381,73 @@ def undeployment_wait(test_obj=None):
         test_obj.undeploy_complete(start)
 
 
+def count_deployment(test_obj, step_target):
+
+    deploy_results = test_obj.deploy_results
+    client = marathon.create_client()
+
+    deploying = True
+    abort = False
+    failure_count = 0
+
+    scale_failure_count = 0
+    while deploying and not abort:
+        try:
+
+            task_count = current_scale()
+            deploy_results.set_current_scale(task_count)
+
+            deploying = task_count < step_target
+
+            if deploying:
+                time.sleep(calculate_deployment_wait_time(test_obj))
+                # reset failure count,  it is used for consecutive failures
+                failure_count = 0
+                quiet_wait_for_marathon_up(test_obj)
+
+            abort = abort_deployment_check(test_obj)
+            scale_failure_count = 0
+        except DCOSScaleException as e:
+            # current scale is lower than previous scale
+            msg = str(e)
+            deploy_results.failed(msg)
+            print("************ {} *********".format(msg))
+            scale_failure_count = scale_failure_count + 1
+
+            # 5 tries to see if scale increases, if no abort
+            # 5 consecutive failures
+            if scale_failure_count > 5:
+                deploy_results.failed('Aborting based on too many failures: {}'.format(scale_failure_count))
+                abort = True
+            # need some time
+            else:
+                time.sleep(calculate_scale_wait_time(test_obj, scale_failure_count))
+                quiet_wait_for_marathon_up(test_obj)
+
+        except DCOSNotScalingException as e:
+            msg = str(e)
+            deploy_results.failed(msg)
+            print("************ {} *********".format(msg))
+            abort = True
+
+        except Exception as e:
+            msg = str(e)
+            test_obj.add_event(msg)
+            failure_count = failure_count + 1
+
+            # consecutive failures > x will fail test
+            if failure_count > 5:
+                message = 'Too many failures query for deployments'
+                print("************ {} *********".format(message))
+                deploy_results.failed(message)
+                raise TestException(message)
+
+            time.sleep(calculate_deployment_wait_time(test_obj, failure_count))
+            quiet_wait_for_marathon_up(test_obj)
+            pass
+
+    return abort
+
 def time_deployment2(test_obj):
 
     deploy_results = test_obj.deploy_results
@@ -360,7 +456,6 @@ def time_deployment2(test_obj):
     deploying = True
     abort = False
     failure_count = 0
-    test_obj.reset_loop_count()
 
     scale_failure_count = 0
     while deploying and not abort:
@@ -405,8 +500,10 @@ def time_deployment2(test_obj):
         except Exception as e:
             msg = str(e)
             test_obj.add_event(msg)
+            failure_count = failure_count + 1
+
             # consecutive failures > x will fail test
-            if failure_count > 10:
+            if failure_count > 5:
                 message = 'Too many failures query for deployments'
                 print("************ {} *********".format(message))
                 deploy_results.failed(message)
@@ -1002,10 +1099,12 @@ def pretty_duration_safe(duration):
 
 def clean_root_marathon():
     stop_root_marathon()
-    delete_zk_node('/marathon/leader-curator/')
-    delete_zk_node('/marathon/leader/')
-    delete_zk_node('/marathon/state/')
-    delete_zk_node('/marathon/')
+    delete_zk_node('/marathon/leader-curator')
+    delete_zk_node('/marathon/leader')
+    delete_zk_node('/marathon/state/framework:id')
+    delete_zk_node('/marathon/state/internal:storage:version')
+    delete_zk_node('/marathon/state')
+    delete_zk_node('/marathon')
     start_root_marathon()
     wait_for_marathon_up()
 

@@ -21,6 +21,13 @@ test_log = []
 ##############
 
 
+def test_blah():
+
+    for num in range(1, 3000 + 1):
+        if not num % 1000:
+            print(num)
+
+
 @pytest.mark.parametrize("num_apps, num_instances", [
   (1, 1),
   (1, 10),
