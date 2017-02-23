@@ -13,21 +13,6 @@ def file_dir():
     return os.path.dirname(os.path.realpath(__file__))
 
 
-def ee_version():
-
-    version = None
-    # cat /opt/mesosphere/etc/bootstrap-config.json | jq '.["security"]'
-
-    try:
-        status, stdout = run_command_on_master('cat /opt/mesosphere/etc/bootstrap-config.json')
-        if status:
-            configuration = json.loads(stdout)
-            version = configuration['security']
-    except:
-        pass
-    return version
-
-
 # should be in shakedown
 def get_resource(resource):
     """
