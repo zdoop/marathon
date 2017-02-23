@@ -88,7 +88,7 @@ def test_incremental_app_scale():
     for step in itertools.count(start=1):
         shakedown.echo("Add {} apps".format(batch_size))
 
-        group_id = "/batch-{}".format(step)
+        group_id = "/batch-{0:0>3}".format(step)
         app_ids = ("app-{}".format(i) for i in range(batch_size))
         app_definitions = [app_def(app_id) for app_id in app_ids]
         next_batch = {
