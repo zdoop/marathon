@@ -84,20 +84,23 @@ def test_incremental_app_scale():
         }
 
     client = marathon.create_client()
+    # client.remove_group('/', True)
 
     for step in itertools.count(start=1):
         shakedown.echo("Add {} apps".format(batch_size))
 
-        group_id = "/batch-{0:0>3}".format(step)
-        app_ids = ("app-{}".format(i) for i in range(batch_size))
-        app_definitions = [app_def(app_id) for app_id in app_ids]
-        next_batch = {
-            "apps": app_definitions,
-            "dependencies": [],
-            "id": group_id
-        }
+        app_id = "app-{0:0>4}".format(step)
+        client.add_app(app_def(app_id))
+        # group_id = "/batch-{0:0>3}".format(step)
+        # app_ids = ("app-{}".format(i) for i in range(batch_size))
+        # app_definitions = [app_def(app_id) for app_id in app_ids]
+        # next_batch = {
+        #     "apps": app_definitions,
+        #     "dependencies": [],
+        #     "id": group_id
+        # }
 
-        client.create_group(next_batch)
+        # client.create_group(next_batch)
         shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
 
         shakedown.echo("done.")
