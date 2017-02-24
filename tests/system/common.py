@@ -363,14 +363,15 @@ def remove_undeployed():
     stop_all_deployments()
 
 
-def stop_all_deployments():
+def stop_all_deployments(noisy=False):
     client = marathon.create_client()
     deployments = client.get_deployments()
     for deployment in deployments:
         try:
             client.stop_deployment(deployment['id'])
-        except:
-            pass
+        except Exception as e:
+            if noisy:
+                print(e)
 
 
 def delete_all_apps_wait():
@@ -480,7 +481,6 @@ def get_pod_tasks(pod_id):
     tasks = get_marathon_tasks()
     for task in tasks:
         if task['discovery']['name'] == pod_id:
-        # if task['labels'][0]['value'] == pod_id:
             pod_tasks.append(task)
 
     return pod_tasks
