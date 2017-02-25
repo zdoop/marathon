@@ -79,7 +79,9 @@ def test_count_scale(num_apps, num_instances):
   (10, 1),
   (100, 1),
   (500, 1),
-  (1000, 1)
+  (1000, 1),
+  (5000, 1),
+  (10000, 1)
 ])
 def test_group_scale(num_apps, num_instances):
     """ Runs scale test on `num_apps` usually 1 instance each deploy as a group.
