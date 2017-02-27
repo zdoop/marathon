@@ -2,8 +2,14 @@ from common import app, available_resources, cluster_info, ensure_mom_version
 from datetime import timedelta
 from dcos import marathon
 import itertools
+import logging
 import shakedown
 from utils import marathon_on_marathon
+
+def setup_module(module):
+    """ Setup test module
+    """
+    logging.basicConfig(format='%(asctime)s %(levelname)-8s: %(message)s')
 
 def linear_step_function(step_size=1000):
     """
@@ -11,6 +17,29 @@ def linear_step_function(step_size=1000):
     """
     def inner(step):
         return step * step_size
+    return inner
+
+def exponential_decay(start=1000, decay=0.5):
+    """
+    Returns the next batch size which has a exponential decay.
+
+    With default parameters we have:
+    0:1000, 1:606.53, 2:367.88, 3:223.13, 4:135.34, 5:82.08
+
+    Increase decay for a faster slow down of batches.
+
+    This function is useful to jump to a certain size quickly and to slow down
+    growth then.
+
+    Always returns the lower integer with min 1.
+
+    :start First batch size.
+    :decay Exponential decay constant.
+    """
+    def inner(step):
+        extact = start * math.exp(-1 * step * decay)
+        approx = math.floor(extact)
+        return max(1, approx)
     return inner
 
 
@@ -82,6 +111,7 @@ def test_incremental_app_scale():
         }
 
     client = marathon.create_client()
+    client.remove_group('/')
 
     for step in itertools.count(start=1):
         shakedown.echo("Add new apps")
