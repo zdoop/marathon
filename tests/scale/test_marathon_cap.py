@@ -63,7 +63,40 @@ def test_incremental_scale():
 def test_incremental_app_scale():
     """
     Scale number of app in steps until the first error, e.g. a timeout, is
-    reached.
+    reached. The apps are created in root group.
+    """
+
+    cluster_info()
+    print(available_resources())
+
+    def app_def(app_id):
+        return {
+            "id": app_id,
+            "instances":  1,
+            "cmd": "for (( ; ; )); do sleep 100000000; done",
+            "cpus": 0.001,
+            "mem": 8,
+            "disk": 0,
+            "backoffFactor": 1.0,
+            "backoffSeconds": 0,
+        }
+
+    client = marathon.create_client()
+
+    for step in itertools.count(start=1):
+        shakedown.echo("Add new apps")
+
+        app_id = "app-{0:0>4}".format(step)
+        client.add_app(app_def(app_id))
+
+        shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
+
+        shakedown.echo("done.")
+
+def test_incremental_apps_per_group_scale():
+    """
+    Scale in batches of apps per group in steps until the first error, e.g.
+    a timeout, is reached.
     """
 
     batch_size = 50
@@ -84,24 +117,20 @@ def test_incremental_app_scale():
         }
 
     client = marathon.create_client()
-    # client.remove_group('/', True)
 
     for step in itertools.count(start=1):
         shakedown.echo("Add {} apps".format(batch_size))
 
-        app_id = "app-{0:0>4}".format(step)
-        client.add_app(app_def(app_id))
-        # group_id = "/batch-{0:0>3}".format(step)
-        # app_ids = ("app-{}".format(i) for i in range(batch_size))
-        # app_definitions = [app_def(app_id) for app_id in app_ids]
-        # next_batch = {
-        #     "apps": app_definitions,
-        #     "dependencies": [],
-        #     "id": group_id
-        # }
+        group_id = "/batch-{0:0>3}".format(step)
+        app_ids = ("app-{}".format(i) for i in range(batch_size))
+        app_definitions = [app_def(app_id) for app_id in app_ids]
+        next_batch = {
+            "apps": app_definitions,
+            "dependencies": [],
+            "id": group_id
+        }
 
-        # client.create_group(next_batch)
+        client.create_group(next_batch)
         shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
 
         shakedown.echo("done.")
-
