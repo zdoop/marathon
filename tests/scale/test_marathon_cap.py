@@ -3,6 +3,7 @@ from datetime import timedelta
 from dcos import marathon
 import itertools
 import logging
+import math
 import shakedown
 from utils import marathon_on_marathon
 
@@ -125,11 +126,9 @@ def test_incremental_app_scale():
 
 def test_incremental_apps_per_group_scale():
     """
-    Scale in batches of apps per group in steps until the first error, e.g.
-    a timeout, is reached.
+    Try to reach the maximum number of apps. We start with batches of apps in a
+    group and decay the batch size.
     """
-
-    batch_size = 50
 
     cluster_info()
     print(available_resources())
@@ -148,11 +147,13 @@ def test_incremental_apps_per_group_scale():
 
     client = marathon.create_client()
 
-    for step in itertools.count(start=1):
+    batch_size_for = exponential_decay(start=500, decay=0.3)
+    for step in itertools.count(start=0):
+        batch_size = batch_size_for(step)
         shakedown.echo("Add {} apps".format(batch_size))
 
         group_id = "/batch-{0:0>3}".format(step)
-        app_ids = ("app-{}".format(i) for i in range(batch_size))
+        app_ids = ("app-{0:0>4}".format(i) for i in range(batch_size))
         app_definitions = [app_def(app_id) for app_id in app_ids]
         next_batch = {
             "apps": app_definitions,
