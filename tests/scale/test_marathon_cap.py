@@ -190,7 +190,7 @@ def test_incremental_group_nesting():
     #client.remove_group('/')
     # return
 
-    batch_size_for = exponential_decay(start=10, decay=0.3)
+    batch_size_for = exponential_decay(start=5, decay=0.1)
     depth = 0
     for step in itertools.count(start=0):
         batch_size = batch_size_for(step)
