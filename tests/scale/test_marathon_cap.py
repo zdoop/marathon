@@ -175,3 +175,37 @@ def test_incremental_groups_scale():
         shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
 
         shakedown.echo("done.")
+
+
+def test_incremental_group_nesting():
+    """
+    Scale depth of nested groups. Again we grow fast at the beginning and then
+    slow the growth.
+    """
+
+    cluster_info()
+    print(available_resources())
+
+    client = marathon.create_client()
+    #client.remove_group('/')
+    # return
+
+    batch_size_for = exponential_decay(start=10, decay=0.3)
+    depth = 0
+    for step in itertools.count(start=0):
+        batch_size = batch_size_for(step)
+        depth += batch_size
+        shakedown.echo("Create a group with a nesting of {}".format(depth))
+
+        group_ids = ("group-{0:0>3}".format(g) for g in range(depth))
+        nested_groups = '/'.join(group_ids)
+
+        # Note: We always deploy into the same nested groups.
+        app_id = '/{0}/app-1'.format(nested_groups)
+
+        client.add_app(app_def(app_id))
+        shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
+
+        shakedown.echo("done.")
+
+
