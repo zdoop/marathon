@@ -127,9 +127,11 @@ def test_incremental_apps_per_group_scale():
     client = marathon.create_client()
 
     batch_size_for = exponential_decay(start=500, decay=0.3)
+    total
     for step in itertools.count(start=0):
         batch_size = batch_size_for(step)
-        shakedown.echo("Add {} apps".format(batch_size))
+        total += batch_size
+        shakedown.echo("Add {} apps totaling {}".format(batch_size, total))
 
         group_id = "/batch-{0:0>3}".format(step)
         app_ids = ("app-{0:0>4}".format(i) for i in range(batch_size))
@@ -141,6 +143,35 @@ def test_incremental_apps_per_group_scale():
         }
 
         client.create_group(next_batch)
+        shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
+
+        shakedown.echo("done.")
+
+
+def test_incremental_groups_scale():
+    """
+    Scale number of groups.
+    """
+
+    cluster_info()
+    print(available_resources())
+
+    client = marathon.create_client()
+
+    batch_size_for = exponential_decay(start=40, decay=0.01)
+    total = 0
+    for step in itertools.count(start=0):
+        batch_size = batch_size_for(step)
+        total += batch_size
+        shakedown.echo("Add {} groups totaling {}".format(batch_size, total))
+
+        group_ids = ("/group-{0:0>4}".format(step * batch_size + i) for i in range(batch_size))
+        app_ids = ("{}/app-1".format(g) for g in group_ids)
+        app_definitions = [app_def(app_id) for app_id in app_ids]
+
+        # There is no app id. We simply PUT /v2/apps to create groups in
+        # batches.
+        client.update_app('', app_definitions)
         shakedown.deployment_wait(timeout=timedelta(minutes=15).total_seconds())
 
         shakedown.echo("done.")
