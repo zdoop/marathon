@@ -12,6 +12,20 @@ def setup_module(module):
     """
     logging.basicConfig(format='%(asctime)s %(levelname)-8s: %(message)s')
 
+
+def app_def(app_id):
+    return {
+        "id": app_id,
+        "instances":  1,
+        "cmd": "for (( ; ; )); do sleep 100000000; done",
+        "cpus": 0.001,
+        "mem": 8,
+        "disk": 0,
+        "backoffFactor": 1.0,
+        "backoffSeconds": 0,
+    }
+
+
 def linear_step_function(step_size=1000):
     """
     Curried linear step function that gives next instances size based on a step.
@@ -65,19 +79,8 @@ def test_incremental_scale():
     cluster_info()
     print(available_resources())
 
-    app_def = {
-      "id": "cap-app",
-      "instances":  1,
-      "cmd": "for (( ; ; )); do sleep 100000000; done",
-      "cpus": 0.001,
-      "mem": 8,
-      "disk": 0,
-      "backoffFactor": 1.0,
-      "backoffSeconds": 0,
-    }
-
     client = marathon.create_client()
-    client.add_app(app_def)
+    client.add_app(app_def("cap-app"))
 
     for new_size in incremental_steps(linear_step_function(step_size=1000)):
         shakedown.echo("Scaling to {}".format(new_size))
@@ -98,18 +101,6 @@ def test_incremental_app_scale():
 
     cluster_info()
     print(available_resources())
-
-    def app_def(app_id):
-        return {
-            "id": app_id,
-            "instances":  1,
-            "cmd": "for (( ; ; )); do sleep 100000000; done",
-            "cpus": 0.001,
-            "mem": 8,
-            "disk": 0,
-            "backoffFactor": 1.0,
-            "backoffSeconds": 0,
-        }
 
     client = marathon.create_client()
     client.remove_group('/')
@@ -132,18 +123,6 @@ def test_incremental_apps_per_group_scale():
 
     cluster_info()
     print(available_resources())
-
-    def app_def(app_id):
-        return {
-            "id": app_id,
-            "instances":  1,
-            "cmd": "for (( ; ; )); do sleep 100000000; done",
-            "cpus": 0.001,
-            "mem": 8,
-            "disk": 0,
-            "backoffFactor": 1.0,
-            "backoffSeconds": 0,
-        }
 
     client = marathon.create_client()
 
