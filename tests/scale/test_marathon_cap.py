@@ -127,11 +127,9 @@ def test_incremental_apps_per_group_scale():
     client = marathon.create_client()
 
     batch_size_for = exponential_decay(start=500, decay=0.3)
-    total
     for step in itertools.count(start=0):
         batch_size = batch_size_for(step)
-        total += batch_size
-        shakedown.echo("Add {} apps totaling {}".format(batch_size, total))
+        shakedown.echo("Add {} apps".format(batch_size))
 
         group_id = "/batch-{0:0>3}".format(step)
         app_ids = ("app-{0:0>4}".format(i) for i in range(batch_size))
@@ -187,8 +185,6 @@ def test_incremental_group_nesting():
     print(available_resources())
 
     client = marathon.create_client()
-    #client.remove_group('/')
-    # return
 
     batch_size_for = exponential_decay(start=5, decay=0.1)
     depth = 0
