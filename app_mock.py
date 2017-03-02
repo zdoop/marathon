@@ -1,28 +1,88 @@
 #!/usr/bin/env python3
 
 import http.server
+import logging
 import os
+import platform
 import socketserver
 import sys
+import urllib.request
+from urllib.request import Request, urlopen
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+def make_handler(appId, version, url):
+    """
+    Factory method that creates a handler class.
+    """
 
-    def do_GET(self):
-        self.send_response(200)
-        marathonId = os.getenv("MARATHON_APP_ID", "NO_MARATHON_APP_ID_SET")
-        self.wfile.write("Pong {}".format(marathonId))
-        return
+    class Handler(http.server.SimpleHTTPRequestHandler):
+
+        def handle_ping(self):
+            self.send_response(200)
+            self.send_header('Content-type','text/html')
+            self.end_headers()
+
+            marathonId = os.getenv("MARATHON_APP_ID", "NO_MARATHON_APP_ID_SET")
+            msg = "Pong {}".format(marathonId)
+
+            self.wfile.write(bytes(msg, "UTF-8"))
+            return
+
+
+        def check_health(self):
+            url_req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            try:
+                with urlopen(url_req) as response:
+                    res = response.read()
+                    status = response.status
+                    log = "AppMock[{0} {1}]: current health is {2}, {3}".format(
+                        appId, version, res, status)
+                    print(log)
+                    logging.debug(log)
+
+                    self.send_header('Content-type','text/html')
+                    self.end_headers()
+
+                    self.send_response(status)
+                    self.wfile.write(res)
+                    return
+            except:
+                logging.exception('Could not check health')
+
+
+        def do_GET(self):
+            logging.debug("Got GET request")
+            if self.path == '/ping':
+                return self.handle_ping()
+            else:
+                return self.check_health()
+
+
+        def do_POST(self):
+            logging.debug("Got POST request")
+            return self.check_health()
+
+
+    return Handler
+
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        filename="/Users/kjeschkies/Projects/marathon/app_mock.log",
+        level=logging.DEBUG)
+    logging.info(platform.python_version())
+    logging.debug(sys.argv)
+
     port = int(sys.argv[1])
     appId = sys.argv[2]
     version = sys.argv[3]
     url = "{}/{}".format(sys.argv[4], port)
+    # url = sys.argv[4]
     taskId = os.getenv("MESOS_TASK_ID", "<UNKNOWN>")
 
-    with socketserver.TCPServer(("", port), Handler) as httpd:
-       msg = "AppMock[{appId} {version}]: {taskId} has taken the stage at port {port}. Will query {url} for health status.".format(appId, version, taskId, port, url)
-       print(msg)
-       httpd.serve_forever()
+    httpd = socketserver.TCPServer(("", port), make_handler(appId, version, url))
+    msg = "AppMock[{0} {1}]: {2} has taken the stage at port {3}. Will query {4} for health status.".format(appId, version, taskId, port, url)
+    print(msg)
+    logging.debug(msg)
+    httpd.serve_forever()
 
 

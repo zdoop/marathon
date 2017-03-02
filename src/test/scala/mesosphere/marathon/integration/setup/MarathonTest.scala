@@ -313,15 +313,15 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
   def appProxy(appId: PathId, versionId: String, instances: Int, healthCheck: Option[HealthCheck] = Some(appProxyHealthCheck()), dependencies: Set[PathId] = Set.empty): AppDefinition = {
 
+    val appPythonMain: String = "/Users/kjeschkies/Projects/marathon/app_mock.py"
     val appProxyMainInvocation: String = {
       val file = File.createTempFile("appProxy", ".sh")
       file.deleteOnExit()
 
       FileUtils.write(
         file,
-        s"""#!/bin/sh
-           |set -x
-           |exec $appProxyMainInvocationImpl $$*""".stripMargin)
+        s"""|set -x
+            |exec /Users/kjeschkies/.pyenv/shims/python3 $appPythonMain $$*""".stripMargin)
       file.setExecutable(true)
 
       file.getAbsolutePath
