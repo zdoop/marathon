@@ -504,7 +504,20 @@ def elapse_time(start, end=None):
     return round(end-start, 3)
 
 
-def write_meta_data(test_metadata={}, filename='meta-data.json'):
+def write_meta_data(metadata={}, filename='meta-data.json'):
+
+    with open(filename, 'w') as out:
+        json.dump(metadata, out)
+
+
+def get_metadata():
+    version = None
+
+    try:
+        version = ee_version()
+    except:
+        pass
+
     resources = available_resources()
     metadata = {
         'dcos-version': dcos_version(),
@@ -513,12 +526,14 @@ def write_meta_data(test_metadata={}, filename='meta-data.json'):
         'resources': {
             'cpus': resources.cpus,
             'memory': resources.mem
-        }
+        },
+        'marathon': 'root'
     }
 
-    metadata.update(test_metadata)
-    with open(filename, 'w') as out:
-        json.dump(metadata, out)
+    if version is not None:
+        metadata['security'] = version
+
+    return metadata
 
 
 def get_marathon_version():
@@ -546,7 +561,7 @@ def cluster_info(mom_name='marathon-user'):
                 print("Marathon MoM not present")
     else:
         print("Marathon MoM not present")
-        
+
 
 def get_mom_json(version='v1.3.6'):
     mom_json = get_resource("mom.json")
@@ -1067,3 +1082,22 @@ def clean_marathon_state(test_obj=None):
     ensure_clean_state(test_obj)
     yield
     ensure_clean_state(test_obj)
+
+
+def get_test_style_key_base(current_test):
+    """ The style key is historical and is the key to recording test results.
+    For root marathon the key is `root_instances` or `root_group`.
+    """
+    return get_style_key_base(current_test.mom, current_test.style)
+
+
+def get_test_key(current_test, key):
+    return get_key(current_test.mom, current_test.style, key)
+
+
+def get_style_key_base(marathon_name, style):
+    return '{}_{}'.format(marathon_name, style)
+
+
+def get_key(marathon_name, style, key):
+    return "{}_{}".format(get_style_key_base(marathon_name, style), key)

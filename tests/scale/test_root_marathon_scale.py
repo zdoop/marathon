@@ -20,6 +20,8 @@ test_log = []
 # Test Section
 ##############
 
+def test_blah():
+    print(get_metadata())
 
 @pytest.mark.parametrize("num_apps, num_instances", [
   (1, 1),
@@ -111,25 +113,6 @@ def has_enough_resources(need):
     return need.cpus <= available.cpus and need.mem <= available.mem
 
 
-def get_test_style_key_base(current_test):
-    """ The style key is historical and is the key to recording test results.
-    For root marathon the key is `root_instances` or `root_group`.
-    """
-    return get_style_key_base(current_test.mom, current_test.style)
-
-
-def get_test_key(current_test, key):
-    return get_key(current_test.mom, current_test.style, key)
-
-
-def get_style_key_base(marathon_name, style):
-    return '{}_{}'.format(marathon_name, style)
-
-
-def get_key(marathon_name, style, key):
-    return "{}_{}".format(get_style_key_base(marathon_name, style), key)
-
-
 def previous_style_test_failed(current_test):
     return type_test_failed.get(get_test_style_key_base(current_test), False)
 
@@ -151,24 +134,6 @@ def teardown_module(module):
         delete_all_apps_wait()
     except:
         pass
-
-
-def get_metadata():
-    version = None
-
-    try:
-        ee_version()
-    except:
-        pass
-
-    metadata = {
-        'marathon': 'root'
-    }
-
-    if version is not None:
-        metadata['security'] = version
-
-    return metadata
 
 
 def log_current_test(current_test):
