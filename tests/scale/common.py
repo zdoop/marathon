@@ -1,7 +1,9 @@
+import pytest
 import retrying
 import time
 import traceback
 
+from datetime import timedelta
 from dcos.mesos import DCOSClient
 from dcos import mesos
 from shakedown import *
@@ -104,10 +106,18 @@ def launch_apps(count=1, instances=1):
 
 
 def launch_group_test(test_obj):
+    """ Launches the "group" test type for a ScaleTest object.
+        More details below for `launch_group`
+    """
     launch_group(test_obj.count, test_obj.instance)
 
 
 def launch_group(count=1, instances=1):
+    """ Launches a "group" style test, which is 1 HTTP Post request for all
+        of the apps defined by count.  It is common to launch X apps as a group
+        with only 1 instance each.  It is possible to control the number of instances
+        of an app.
+    """
     client = marathon.create_client()
     client.create_group(group(count, instances))
 
@@ -131,7 +141,7 @@ def get_current_tasks():
     try:
         return len(get_tasks())
     except Exception as e:
-        print(str(e))
+        print(e)
         return 0
 
 
@@ -150,14 +160,16 @@ def count_test_app(test_obj):
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
     if test_obj.skipped:
+        pytest.skip("test has been skipped")
         return
 
     try:
         wait_for_marathon_up(test_obj)
         delete_all_apps_wait2()
-        wait_for_marathon_up(test_obj)
-    except:
-        pass
+    except Exception as e:
+        print(e)
+
+    wait_for_marathon_up(test_obj)
 
     # launch
     test_obj.start_test()
@@ -179,24 +191,32 @@ def count_test_app(test_obj):
 
     except Exception as e:
         msg = str(e)
-        print("************ {} *********".format(msg))
+        print(e)
         test_obj.deploy_results.failed(msg)
 
     # undeploy
-    wait_for_marathon_up(test_obj)
-    delete_all_apps_wait2(test_obj)
+    try:
+        wait_for_marathon_up(test_obj)
+        delete_all_apps_wait2(test_obj)
+    except Exception as e:
+        print(e)
+
     wait_for_marathon_up(test_obj)
 
 
 def launch_apps2(test_obj):
+    """ This function launches (makes HTTP POST requests) for apps.  It is used
+        for instance and count tests.   Instance test will only have 1 count with X
+        instances and is the simple case.
+        The group test uses a different launch function.
+    """
+
     client = marathon.create_client()
     count = test_obj.count
     instances = test_obj.instance
     launch_results = test_obj.launch_results
     deploy_results = test_obj.deploy_results
     scale_failure_count = 0
-    abort = False
-    abort_msg = ''
     for num in range(1, count + 1):
         try:
             client.add_app(app(num, instances))
@@ -210,8 +230,7 @@ def launch_apps2(test_obj):
                 if count_deployment(test_obj, target):
                     abort_msg = 'Count test launch failure at {} out of {}'.format(num, test_obj.target)
                     test_obj.add_event(abort_msg)
-                    abort = True
-                    break
+                    raise Exception(abort_msg)
 
         except Exception as e:
             test_obj.add_event('launch exception: {}'.format(str(e)))
@@ -222,16 +241,13 @@ def launch_apps2(test_obj):
             # 5 consecutive failures
             if scale_failure_count > 10:
                 abort_msg = 'Aborting based on too many failures: {}'.format(scale_failure_count)
-                abort = True
-                # leave the loop and end the test
-                break
+                test_obj.add_event(abort_msg)
+                raise Exception(abort_msg)
             # need some time
             else:
                 time.sleep(calculate_scale_wait_time(test_obj, scale_failure_count))
                 quiet_wait_for_marathon_up(test_obj)
 
-    if abort:
-        raise Exception(abort_msg)
 
 
 def instance_test_app(test_obj):
@@ -246,6 +262,7 @@ def instance_test_app(test_obj):
     """
 
     if test_obj.skipped:
+        pytest.skip("test has been skipped")
         return
 
     # cleanup
@@ -271,8 +288,8 @@ def instance_test_app(test_obj):
         test_obj.reset_loop_count()
         time_deployment2(test_obj)
     except Exception as e:
+        print(e)
         msg = str(e)
-        print("************ {} *********".format(msg))
         test_obj.deploy_results.failed(msg)
 
     # undeploy
@@ -292,6 +309,7 @@ def group_test_app(test_obj):
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
     if test_obj.skipped:
+        pytest.skip("test has been skipped")
         return
 
     try:
@@ -319,8 +337,8 @@ def group_test_app(test_obj):
         test_obj.reset_loop_count()
         time_deployment2(test_obj)
     except Exception as e:
+        print(e)
         msg = str(e)
-        print("************ {} *********".format(msg))
         test_obj.deploy_results.failed(msg)
 
     # undeploy
@@ -330,6 +348,8 @@ def group_test_app(test_obj):
 
 
 def delete_all_apps_wait2(test_obj=None, msg='undeployment failure'):
+    """ Used to remove all instances of apps and wait until the deployment finishes
+    """
 
     if test_obj is not None and test_obj.deploy_results.current_scale > 0:
         test_obj.add_event('undeploying {} tasks'.format(test_obj.deploy_results.current_scale))
@@ -410,9 +430,9 @@ def count_deployment(test_obj, step_target):
             scale_failure_count = 0
         except DCOSScaleException as e:
             # current scale is lower than previous scale
+            print(e)
             msg = str(e)
             deploy_results.failed(msg)
-            print("************ {} *********".format(msg))
             scale_failure_count = scale_failure_count + 1
 
             # 5 tries to see if scale increases, if no abort
@@ -426,9 +446,9 @@ def count_deployment(test_obj, step_target):
                 quiet_wait_for_marathon_up(test_obj)
 
         except DCOSNotScalingException as e:
+            print(e)
             msg = str(e)
             deploy_results.failed(msg)
-            print("************ {} *********".format(msg))
             abort = True
 
         except Exception as e:
@@ -439,7 +459,8 @@ def count_deployment(test_obj, step_target):
             # consecutive failures > x will fail test
             if failure_count > 10:
                 message = 'Too many failures query for deployments'
-                print("************ {} *********".format(message))
+                print(e)
+                print(message)
                 deploy_results.failed(message)
                 raise TestException(message)
 
@@ -449,7 +470,15 @@ def count_deployment(test_obj, step_target):
 
     return abort
 
+
 def time_deployment2(test_obj):
+    """ Times the deployment of a launched set of applications for this test object.
+        This function will wait until the following conditions are met or occur:
+            * target scale is reached
+            * 5 consecutive DCOSScaleException (current scale is less than previous scale)
+            * 1 DCOSNotScalingException (scale hasn't increased for 20 mins)
+            * Any other exception happens 10x consecutive (this happens at very high scale)
+    """
 
     deploy_results = test_obj.deploy_results
     client = marathon.create_client()
@@ -477,9 +506,9 @@ def time_deployment2(test_obj):
             scale_failure_count = 0
         except DCOSScaleException as e:
             # current scale is lower than previous scale
+            print(e)
             msg = str(e)
             deploy_results.failed(msg)
-            print("************ {} *********".format(msg))
             scale_failure_count = scale_failure_count + 1
 
             # 5 tries to see if scale increases, if no abort
@@ -493,9 +522,9 @@ def time_deployment2(test_obj):
                 quiet_wait_for_marathon_up(test_obj)
 
         except DCOSNotScalingException as e:
+            print(e)
             msg = str(e)
             deploy_results.failed(msg)
-            print("************ {} *********".format(msg))
             abort = True
 
         except Exception as e:
@@ -506,13 +535,13 @@ def time_deployment2(test_obj):
             # consecutive failures > x will fail test
             if failure_count > 10:
                 message = 'Too many failures query for deployments'
-                print("************ {} *********".format(message))
+                print(e)
+                print(message)
                 deploy_results.failed(message)
                 raise TestException(message)
 
             time.sleep(calculate_deployment_wait_time(test_obj, failure_count))
             quiet_wait_for_marathon_up(test_obj)
-            pass
 
     print('loop count: {}'.format(test_obj.loop_count))
     if deploy_results.is_target_reached():
@@ -527,11 +556,10 @@ def calculate_scale_wait_time(test_obj, failure_count):
 
 def abort_deployment_check(test_obj):
     """ Returns True if we should abort, otherwise False
-        It looks at things like time duration
+        Currently it looks at time duration of this test (10hrs max)
     """
-    # no test takes longer than 3 hours regardless
-    hours = 10
-    if elapse_time(test_obj.start) > hours * 60 * 60:
+
+    if elapse_time(test_obj.start) > timedelta(hours=10).total_seconds():
         test_obj.add_event("Test taking longer than {} hours".format(hours))
         return True
 
@@ -767,6 +795,8 @@ def is_mom_version(version):
 
 
 class DCOSScaleException(DCOSException):
+    """ Thrown when the current scale is less than the last reported scale
+    """
 
     def __init__(self, message):
         self.message = message
@@ -779,6 +809,8 @@ class DCOSScaleException(DCOSException):
 
 
 class DCOSNotScalingException(DCOSException):
+    """ Thrown when scale has remained the same for a predetermined amount of time.
+    """
 
     def __init__(self, message):
         self.message = message
@@ -791,6 +823,8 @@ class DCOSNotScalingException(DCOSException):
 
 
 class LaunchResults(object):
+    """ Provides timing and test data for the first phase of a ScaleTest.
+    """
 
     def __init__(self, this_test):
         self.success = False
@@ -831,6 +865,8 @@ class LaunchResults(object):
 
 
 class DeployResults(object):
+    """ Provides timing and test data for the second phase of a ScaleTest.
+    """
 
     def __init__(self, this_test):
         self.success = False
@@ -906,6 +942,8 @@ class DeployResults(object):
 
 
 class UnDeployResults(object):
+    """ Provides timing and test data for the last phase of a ScaleTest.
+    """
 
     def __init__(self, this_test):
         self.success = True
@@ -1010,6 +1048,12 @@ class ScaleTest(object):
         self.undeploy_time = elapse_time(start)
 
     def start_test(self):
+        """ Starts the timers for the test.   There can be a delay of cleanup of the
+            cluster between the creation of the ScaleTest object and the real start
+            of the test.   The duration of a scale test is from the point of starting
+            the launch phase until the end of the deployment phase.   The undeployment
+            is tracked but not counted as part of the test time.
+        """
         start_time = time.time()
         self.start = start_time
         self.launch_results.start = start_time
