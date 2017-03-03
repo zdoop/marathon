@@ -223,7 +223,7 @@ def group_test_app(test_obj):
 
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
-    
+
     with clean_marathon_state(test_obj):
         # launch
         test_obj.start_test()
@@ -534,15 +534,19 @@ def cluster_info(mom_name='marathon-user'):
     about = client.get_about()
     print("marathon version: {}".format(about.get("version")))
     # see if there is a MoM
-    with marathon_on_marathon(mom_name):
-        try:
-            client = marathon.create_client()
-            about = client.get_about()
-            print("marathon MoM version: {}".format(about.get("version")))
 
-        except Exception as e:
-            print("Marathon MoM not present")
+    if service_available_predicate('marathon-user'):
+        with marathon_on_marathon(mom_name):
+            try:
+                client = marathon.create_client()
+                about = client.get_about()
+                print("marathon MoM version: {}".format(about.get("version")))
 
+            except Exception as e:
+                print("Marathon MoM not present")
+    else:
+        print("Marathon MoM not present")
+        
 
 def get_mom_json(version='v1.3.6'):
     mom_json = get_resource("mom.json")
@@ -861,7 +865,7 @@ class ScaleTest(object):
         # successful, failed, skipped
         # failure can happen in any of the test phases below
         self.status = 'running'
-        self.test_time = None
+        self.test_time = 0
         self.undeploy_time = None
         self.skipped = False
         self.loop_count = 0
