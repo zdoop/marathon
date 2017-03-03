@@ -22,7 +22,7 @@ def index_of_first_failure(stats, marathon_type, test_type):
         if "f" == status:
             return index
 
-    return index
+    return -1
 
 
 def plot_test_timing(plot, stats, marathon_type, test_type, x):
@@ -31,14 +31,14 @@ def plot_test_timing(plot, stats, marathon_type, test_type, x):
     """
     deploy_time = stats.get(get_key(marathon_type, test_type, 'deploy_time'))
 
-    if deploy_time is None or len(deploy_time) == 0:
+    if deploy_time is None or len(deploy_time) == 0 or deploy_time[0] <= 0.0:
         return
 
     timings = np.array(deploy_time)
     title = '{} Scale Times'.format(test_type.title())
     timings_handle, = plot.plot(x, timings, label=title)
-    fail_index = index_of_first_failure(stats, marathon_type, test_type)
 
+    fail_index = index_of_first_failure(stats, marathon_type, test_type)
     if fail_index > 0:
         scale_at_fail = stats.get(get_key(marathon_type, test_type, 'max'))[fail_index]
         time_at_fail = stats.get(get_key(marathon_type, test_type, 'human_deploy_time'))[fail_index]
@@ -71,7 +71,7 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
 
     # figure and plots setup
     test_errors = get_key(marathon_type, test_types[0], 'errors')
-    if test_errors is None or stats.get(test_errors) is None:
+    if test_errors is None or stats.get(test_errors) is None or len(stats.get(test_errors)) == 0:
         fig, time_plot = plt.subplots(nrows=1)
     else:
         fig, (time_plot, error_plot) = plt.subplots(nrows=2)
@@ -87,6 +87,7 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
     x = np.array(range(len(targets)))
 
     plt.xticks(x, targets)
+    # time_plot.set_xticks(x, targets)
     time_plot.set_xlabel('Scale Targets on {} nodes'.format(metadata['private-agents']))
     time_plot.set_ylabel('Time to Reach Scale (sec)')
 

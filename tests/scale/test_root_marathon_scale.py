@@ -155,18 +155,21 @@ def collect_stats():
         'root_instances_human_deploy_time': [],
         'root_instances_launch_status': [],
         'root_instances_deployment_status': [],
+        'root_instances_errors': [],
         'root_count_target': [],
         'root_count_max': [],
         'root_count_deploy_time': [],
         'root_count_human_deploy_time': [],
         'root_count_launch_status': [],
         'root_count_deployment_status': [],
+        'root_count_errors': [],
         'root_group_target': [],
         'root_group_max': [],
         'root_group_deploy_time': [],
         'root_group_human_deploy_time': [],
         'root_group_launch_status': [],
-        'root_group_deployment_status': []
+        'root_group_deployment_status': [],
+        'root_group_errors': []
     }
 
     for scale_test in test_log:
@@ -193,8 +196,15 @@ def collect_stats():
         key = get_test_key(scale_test, 'deployment_status')
         stats.get(key).append(pass_status(scale_test, scale_test.deploy_results.success))
 
+        # key = get_test_key(scale_test, 'errors')
+        # stats.get(key).append(total_errors(scale_test))
+
     return stats
 
+
+def total_errors(scale_test):
+    errors = 0
+    return errors
 
 def pass_status(test, successful):
     if test.skipped:

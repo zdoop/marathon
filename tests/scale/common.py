@@ -162,14 +162,13 @@ def launch_apps(test_obj):
                     raise Exception(abort_msg)
 
         except Exception as e:
-            test_obj.add_event('launch exception: {}'.format(str(e)))
+            test_obj.add_event('Error (launch failure): {}'.format(str(e)))
 
             scale_failure_count = scale_failure_count + 1
 
-            # 5 tries to see if scale increases, if no abort
-            # 5 consecutive failures
-            if scale_failure_count > 10:
-                abort_msg = 'Aborting based on too many failures: {}'.format(scale_failure_count)
+            # 9 tries to see if scale increases, if no abort
+            if scale_failure_count > 9:
+                abort_msg = 'Fatal (consecutive launch): Aborting based on too many failures: {}'.format(scale_failure_count)
                 test_obj.add_event(abort_msg)
                 raise Exception(abort_msg)
             # need some time
@@ -348,17 +347,17 @@ def count_deployment(test_obj, step_target):
 
         except DCOSNotScalingException as e:
             print(e)
-            msg = str(e)
+            msg = "Fatal (not scaling): {}".format(str(e))
             deploy_results.failed(msg)
             abort = True
 
         except Exception as e:
-            msg = str(e)
+            msg = "Error (deployment error): {}".format(str(e))
             test_obj.add_event(msg)
             failure_count = failure_count + 1
 
             # consecutive failures > x will fail test
-            if failure_count > 10:
+            if failure_count > 9:
                 message = 'Too many failures query for deployments'
                 print(e)
                 print(message)
@@ -408,8 +407,8 @@ def time_deployment2(test_obj):
         except DCOSScaleException as e:
             # current scale is lower than previous scale
             print(e)
-            msg = str(e)
-            deploy_results.failed(msg)
+            msg = "Error (scaling error): {}".format(str(e))
+            test_obj.add_event(msg)
             scale_failure_count = scale_failure_count + 1
 
             # 5 tries to see if scale increases, if no abort
@@ -424,12 +423,12 @@ def time_deployment2(test_obj):
 
         except DCOSNotScalingException as e:
             print(e)
-            msg = str(e)
+            msg = "Fatal (not scaling): {}".format(str(e))
             deploy_results.failed(msg)
             abort = True
 
         except Exception as e:
-            msg = str(e)
+            msg = "Error (deployment error): {}".format(str(e))
             test_obj.add_event(msg)
             failure_count = failure_count + 1
 
@@ -444,7 +443,9 @@ def time_deployment2(test_obj):
             time.sleep(calculate_deployment_wait_time(test_obj, failure_count))
             quiet_wait_for_marathon_up(test_obj)
 
-    print('loop count: {}'.format(test_obj.loop_count))
+    loop_msg = 'loop count: {}'.format(test_obj.loop_count)
+    print(loop_msg)
+    test_obj.add_event(loop_msg)
     if deploy_results.is_target_reached():
         deploy_results.completed()
     else:
@@ -460,8 +461,8 @@ def abort_deployment_check(test_obj):
         Currently it looks at time duration of this test (10hrs max)
     """
 
-    if elapse_time(test_obj.start) > timedelta(hours=10).total_seconds():
-        test_obj.add_event("Test taking longer than {} hours".format(hours))
+    if elapse_time(test_obj.start) > timedelta(hours=4).total_seconds():
+        test_obj.add_event("Error (scale timeout): Test taking longer than {} hours".format(hours))
         return True
 
     return False
