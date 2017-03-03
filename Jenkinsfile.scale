@@ -19,7 +19,9 @@ node('shakedown') {
 
     stage('Installing Dependencies') {
       sh "pip3 install retrying"
-    }    
+      sh "pip3 install matplotlib"
+      sh "pip3 install numpy"
+    }
 
     stage('Configure DCOS Cluster') {
      println "Using: $params.dcos_url"
@@ -44,7 +46,7 @@ node('shakedown') {
     }
 
     stage('Archive Results'){
-      archiveArtifacts 'scale-test.csv, *.json'
+      archiveArtifacts 'scale-test.csv, *.json, scale.png'
     }
   }
   }

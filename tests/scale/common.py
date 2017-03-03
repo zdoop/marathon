@@ -880,7 +880,7 @@ class ScaleTest(object):
         # successful, failed, skipped
         # failure can happen in any of the test phases below
         self.status = 'running'
-        self.test_time = 0
+        self.test_time = 0.0
         self.undeploy_time = None
         self.skipped = False
         self.loop_count = 0

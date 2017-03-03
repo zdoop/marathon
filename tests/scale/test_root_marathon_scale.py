@@ -1,5 +1,6 @@
 from utils import *
 from common import *
+from graph import create_scale_graph
 
 import pytest
 
@@ -20,8 +21,6 @@ test_log = []
 # Test Section
 ##############
 
-def test_blah():
-    print(get_metadata())
 
 @pytest.mark.parametrize("num_apps, num_instances", [
   (1, 1),
@@ -125,11 +124,13 @@ def setup_module(module):
 
 
 def teardown_module(module):
+    test_types = ['instances', 'count', 'group']
     stats = collect_stats()
     write_csv(stats)
     read_csv()
-    write_meta_data(get_metadata())
-
+    metadata = get_metadata()
+    write_meta_data(metadata)
+    create_scale_graph(stats, metadata, test_types)
     try:
         delete_all_apps_wait()
     except:
