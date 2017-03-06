@@ -20,9 +20,8 @@ node('shakedown') {  try {
 
     stage('Checkout Repo') {
       echo 'env: '
-      env.each {k, v ->
-        echo "${k}:${v}"
-      }
+      echo env
+      
       checkout scm
     }
 
