@@ -19,10 +19,10 @@ node('shakedown') {  try {
     ])
 
     stage('Checkout Repo') {
+      checkout scm
+
       echo 'env: '
       echo env
-      
-      checkout scm
     }
 
     stage('Installing Dependencies') {
