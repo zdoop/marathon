@@ -1,4 +1,8 @@
 #!/usr/bin/env groovy
+def previousBuildFailed() {
+    def previousResult = currentBuild.rawBuild.getPreviousBuild()?.getResult()
+    return !hudson.model.Result.SUCCESS.equals(previousResult)
+}
 
 node('shakedown') {  try {
   wrap([$class: 'MesosSingleUseSlave']) {
