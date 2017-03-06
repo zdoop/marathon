@@ -51,7 +51,7 @@ class HealthCheckWorkerActor(implicit mat: Materializer) extends Actor {
           case Success(Some(result)) => replyTo ! result
           case Success(None) => // ignore
           case Failure(t) =>
-            log.debug("Performing health check failed with exception", t)
+            log.debug(s"Performing health check for app=${app.id} instance=${instance.instanceId} port=${check.port} failed with exception", t)
             replyTo ! Unhealthy(
               instance.instanceId,
               instance.runSpecVersion,
@@ -99,7 +99,7 @@ class HealthCheckWorkerActor(implicit mat: Materializer) extends Actor {
     val rawPath = check.path.getOrElse("")
     val absolutePath = if (rawPath.startsWith("/")) rawPath else s"/$rawPath"
     val url = s"http://$host:$port$absolutePath"
-    log.debug(s"Checking the health of [$url] via HTTP")
+    log.debug(s"Checking the health of [$url] for instance=${instance.instanceId} via HTTP")
 
     def get(url: String): Future[HttpResponse] = {
       implicit val requestTimeout = Timeout(check.timeout)
@@ -111,10 +111,10 @@ class HealthCheckWorkerActor(implicit mat: Materializer) extends Actor {
       if (acceptableResponses contains response.status.intValue)
         Some(Healthy(instance.instanceId, instance.runSpecVersion))
       else if (check.ignoreHttp1xx && (toIgnoreResponses contains response.status.intValue)) {
-        log.debug(s"Ignoring health check HTTP response ${response.status.intValue} for ${instance.instanceId}")
+        log.debug(s"Ignoring health check HTTP response ${response.status.intValue} for instance=${instance.instanceId}")
         None
       } else {
-        log.debug("Health check for {} responded with {}", instance.instanceId, response.status: Any)
+        log.debug(s"Health check for instance=${instance.instanceId} responded with ${response.status}")
         Some(Unhealthy(instance.instanceId, instance.runSpecVersion, response.status.toString()))
       }
     }
@@ -127,7 +127,7 @@ class HealthCheckWorkerActor(implicit mat: Materializer) extends Actor {
     port: Int): Future[Option[HealthResult]] = {
     val address = s"$host:$port"
     val timeoutMillis = check.timeout.toMillis.toInt
-    log.debug(s"Checking the health of [$address] via TCP")
+    log.debug(s"Checking the health of [$address] for instance=${instance.instanceId} via TCP")
 
     Future {
       val address = new InetSocketAddress(host, port)
@@ -149,7 +149,7 @@ class HealthCheckWorkerActor(implicit mat: Materializer) extends Actor {
     val rawPath = check.path.getOrElse("")
     val absolutePath = if (rawPath.startsWith("/")) rawPath else s"/$rawPath"
     val url = s"https://$host:$port$absolutePath"
-    log.debug(s"Checking the health of [$url] via HTTPS")
+    log.debug(s"Checking the health of [$url] for instance=${instance.instanceId} via HTTPS")
 
     Http(system).singleRequest(
       RequestBuilding.Get(url),
