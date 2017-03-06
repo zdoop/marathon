@@ -56,6 +56,11 @@ class VolumeTest extends UnitTest {
       provider = "provider",
       options = Map("foo" -> "bar", "baz" -> "qaw")
     )
+    val hostVol = DockerVolume(
+      containerPath = "cpath",
+      hostPath = "/host/path",
+      mode = Mode.RW
+    )
   }
   object Fixture extends Fixture
 
@@ -66,6 +71,7 @@ class VolumeTest extends UnitTest {
     behave like survivesProtobufSerializationRoundtrip("mount vol w/ maxSize", persistent(Fixture.mountVolWithMaxSize))
     behave like survivesProtobufSerializationRoundtrip("ext vol w/o size", external(Fixture.extVolNoSize))
     behave like survivesProtobufSerializationRoundtrip("ext vol w/ size", external(Fixture.extVolWithSize))
+    behave like survivesProtobufSerializationRoundtrip("host vol", Fixture.hostVol)
 
     "validating PersistentVolumeInfo constraints accepts an empty constraint list" in new Fixture {
       validate(rootVolNoConstraints).isSuccess shouldBe true
