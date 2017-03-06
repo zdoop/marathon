@@ -23,8 +23,8 @@ node('shakedown') {  try {
 
       gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
       shortCommit = gitCommit.take(8)
-      echo 'env: '
       echo "#${env.BUILD_NUMBER}: ${shortCommit}"
+      echo "branch ${env.BRANCH_NAME}"
     }
 
     stage('Installing Dependencies') {
