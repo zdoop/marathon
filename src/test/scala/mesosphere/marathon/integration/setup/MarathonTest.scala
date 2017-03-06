@@ -523,6 +523,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
   }
 
   def waitForDeployment(change: RestResult[_], maxWait: FiniteDuration = patienceConfig.timeout.toMillis.millis): CallbackEvent = {
+    require(change.success, s"Deployment request has not been successful. httpCode=${change.code} body=${change.entityString}")
     val deploymentId = change.originalResponse.headers.find(_.name == RestResource.DeploymentHeader).getOrElse(throw new IllegalArgumentException("No deployment id found in Http Header"))
     waitForDeploymentId(deploymentId.value, maxWait)
   }
