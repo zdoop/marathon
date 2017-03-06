@@ -21,8 +21,10 @@ node('shakedown') {  try {
     stage('Checkout Repo') {
       checkout scm
 
+      gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
+      shortCommit = gitCommit.take(8)
       echo 'env: '
-      echo env
+      echo "#${env.BUILD_NUMBER}: ${shortCommit}"
     }
 
     stage('Installing Dependencies') {
