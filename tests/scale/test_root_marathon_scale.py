@@ -22,15 +22,10 @@ test_log = []
 
 
 @pytest.mark.parametrize("num_apps, num_instances", [
-  (1, 1),
-  (1, 10),
-  (1, 100),
   (1, 500),
   (1, 1000),
   (1, 5000),
-  (1, 10000),
-  (1, 25000),
-  (1, 50000)
+  (1, 10000)
 ])
 def test_instance_scale(num_apps, num_instances):
     """ Runs scale tests on `num_instances` of usually 1 app.

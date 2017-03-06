@@ -19,7 +19,7 @@ node('shakedown') {
 
     stage('Installing Dependencies') {
       sh "pip3 install retrying"
-    }    
+    }
 
     stage('Configure DCOS Cluster') {
      println "Using: $params.dcos_url"
@@ -39,7 +39,7 @@ node('shakedown') {
 
           sh "cp -f \"${DOT_SHAKEDOWN}\" ~/.shakedown"
 
-          sh "TERM=velocity shakedown --stdout all --stdout-inline --timeout ${timeout} --ssh-key-file \"${CLI_TEST_SSH_KEY}\" --dcos-url $params.dcos_url tests/scale/test_root_marathon_scale.py"
+          sh "TERM=velocity shakedown --stdout all --stdout-inline --timeout ${timeout} --ssh-key-file \"${CLI_TEST_SSH_KEY}\" --dcos-url $params.dcos_url tests/scale/test_root_marathon_scale.py::test_instance_scale"
         }
     }
 
