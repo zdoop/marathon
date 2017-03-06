@@ -19,6 +19,8 @@ node('shakedown') {  try {
     ])
 
     stage('Checkout Repo') {
+      echo 'branch is: '
+      echo env.BRANCH_NAME
       checkout scm
     }
 
