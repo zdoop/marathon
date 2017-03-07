@@ -4,8 +4,8 @@ package integration
 import java.util.UUID
 import mesosphere.AkkaIntegrationTest
 import mesosphere.marathon.api.v2.json.GroupUpdate
-import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck /*, WaitTestSupport*/ }
-import mesosphere.marathon.state.{ AppDefinition, PathId /*, UpgradeStrategy*/ }
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck, WaitTestSupport }
+import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
 import org.apache.http.HttpStatus
 import spray.http.DateTime
 
@@ -19,6 +19,22 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
 
   def nextAppId(): String = s"app-${UUID.randomUUID}"
   def nextGroupId(): PathId = s"group-${UUID.randomUUID()}".toRootTestPath
+
+  /**
+    * Creates a group id and tries to remove the group after the test run.
+    * @param testcode
+    * @tparam T
+    * @return
+    */
+  def temporaryGroup[T]()(testcode: PathId => T): T = {
+    val gid: PathId = s"temp-group-${UUID.randomUUID()}".toRootTestPath
+
+    try {
+      testcode(gid)
+    } finally {
+      marathon.deleteGroup(gid, force = true)
+    }
+  }
 
   "GroupDeployment" should {
     "create empty group successfully" in {
@@ -152,9 +168,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       waitForDeployment(update)
     }
 
-    "rollback from an upgrade of group" in {
+    "rollback from an upgrade of group" in temporaryGroup() { gid =>
       Given("A group with one application")
-      val gid = nextGroupId()
       val appId = gid / nextAppId()
       val proxy = appProxy(appId, "v1", 2)
       val group = GroupUpdate(gid, Set(proxy))
@@ -178,9 +193,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       WaitTestSupport.validFor("all v1 apps are available", 10.seconds) { v1Checks.pingSince(2.seconds) }
     }
 
-    "during Deployment the defined minimum health capacity is never undershot" in {
+    "during Deployment the defined minimum health capacity is never undershot" in temporaryGroup() { id =>
       Given("A group with one application")
-      val id = nextGroupId()
       val appId = id / nextAppId()
       val proxy = appProxy(appId, "v1", 2).copy(upgradeStrategy = UpgradeStrategy(1))
       val group = GroupUpdate(id, Set(proxy))
