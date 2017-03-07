@@ -38,11 +38,8 @@ def test_instance_scale(num_apps, num_instances):
 
     current_test = initalize_test('root', 'apps', 'instances', num_apps, num_instances)
     instance_test_app(current_test)
-
-    if "failed" in current_test.status:
-        type_test_failed[get_test_style_key_base(current_test)] = True
-
     log_current_test(current_test)
+
 
 @pytest.mark.parametrize("num_apps, num_instances", [
   (1, 1),
@@ -60,12 +57,7 @@ def test_count_scale(num_apps, num_instances):
     """
     current_test = initalize_test('root', 'apps', 'count', num_apps, num_instances)
     count_test_app(current_test)
-
-    if "failed" in current_test.status:
-        type_test_failed[get_test_style_key_base(current_test)] = True
-
     log_current_test(current_test)
-
 
 
 @pytest.mark.parametrize("num_apps, num_instances", [
@@ -85,10 +77,6 @@ def test_group_scale(num_apps, num_instances):
 
     current_test = initalize_test('root', 'apps', 'group', num_apps, num_instances)
     group_test_app(current_test)
-
-    if "failed" in current_test.status:
-        type_test_failed[get_test_style_key_base(current_test)] = True
-
     log_current_test(current_test)
 
 
@@ -184,6 +172,9 @@ def get_metadata():
 
 
 def log_current_test(current_test):
+    if "failed" in current_test.status:
+        type_test_failed[get_test_style_key_base(current_test)] = True
+
     print(current_test)
     current_test.log_events()
     current_test.log_stats()

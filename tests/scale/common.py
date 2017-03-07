@@ -82,71 +82,19 @@ def delete_group(group="/2deep/group"):
     client.remove_group(group, True)
 
 
-def delete_group_and_wait(group="test"):
-    delete_group(group)
-    time_deployment("undeploy")
-
-
 def deployment_less_than_predicate(count=10):
     client = marathon.create_client()
     return len(client.get_deployments()) < count
 
 
-def launch_apps(count=1, instances=1):
-    client = marathon.create_client()
-    for num in range(1, count + 1):
-        # after 400 and every 50 check to see if we need to wait
-        if num > 400 and num % 50 == 0:
-            deployments = len(client.get_deployments())
-            if deployments > 30:
-                # wait for deployment count to be less than a sec
-                wait_for(deployment_less_than_predicate)
-                time.sleep(1)
-        client.add_app(app(num, instances))
-
-
-def launch_group_test(test_obj):
-    """ Launches the "group" test type for a ScaleTest object.
-        More details below for `launch_group`
-    """
-    launch_group(test_obj.count, test_obj.instance)
-
-
-def launch_group(count=1, instances=1):
+def launch_group(test_obj):
     """ Launches a "group" style test, which is 1 HTTP Post request for all
         of the apps defined by count.  It is common to launch X apps as a group
         with only 1 instance each.  It is possible to control the number of instances
         of an app.
     """
     client = marathon.create_client()
-    client.create_group(group(count, instances))
-
-
-def delete_all_apps_wait():
-    delete_all_apps()
-    time_deployment("undeploy")
-
-
-def scale_test_apps(test_obj):
-    if 'instance' in test_obj.style:
-        instance_test_app(test_obj)
-    if 'count' in test_obj.style:
-        count_test_app(test_obj)
-    if 'group' in test_obj.style:
-        group_test_app(test_obj)
-
-
-def get_current_tasks():
-
-    try:
-        return len(get_tasks())
-    except Exception as e:
-        print(e)
-        return 0
-
-
-def get_current_app_tasks(starting_tasks):
-    return get_current_tasks() - starting_tasks
+    client.create_group(group(test_obj.count, test_obj.instance))
 
 
 def count_test_app(test_obj):
@@ -159,52 +107,33 @@ def count_test_app(test_obj):
 
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
-    if test_obj.skipped:
-        pytest.skip("test has been skipped")
-        return
 
-    try:
-        wait_for_marathon_up(test_obj)
-        delete_all_apps_wait2()
-    except Exception as e:
-        print(e)
-
-    wait_for_marathon_up(test_obj)
-
-    # launch
-    test_obj.start_test()
-    launch_results = test_obj.launch_results
-    try:
-        launch_apps2(test_obj)
-    except Exception as e:
-        launch_results.failed('Failure to launch: {}'.format(str(e)))
-        wait_for_marathon_up(test_obj)
-    else:
-        launch_results.completed()
-
-    # deployment
-    try:
-        if launch_results.success:
-            time_deployment2(test_obj)
+    with clean_marathon_state(test_obj):
+        # launch
+        test_obj.start_test()
+        launch_results = test_obj.launch_results
+        try:
+            launch_apps(test_obj)
+        except Exception as e:
+            launch_results.failed('Failure to launch: {}'.format(str(e)))
+            wait_for_marathon_up(test_obj)
         else:
-            test_obj.deploy_results.failed("Unable to continue based on launch failure")
+            launch_results.completed()
 
-    except Exception as e:
-        msg = str(e)
-        print(e)
-        test_obj.deploy_results.failed(msg)
+        # deployment
+        try:
+            if launch_results.success:
+                time_deployment2(test_obj)
+            else:
+                test_obj.deploy_results.failed("Unable to continue based on launch failure")
 
-    # undeploy
-    try:
-        wait_for_marathon_up(test_obj)
-        delete_all_apps_wait2(test_obj)
-    except Exception as e:
-        print(e)
-
-    wait_for_marathon_up(test_obj)
+        except Exception as e:
+            msg = str(e)
+            print(e)
+            test_obj.deploy_results.failed(msg)
 
 
-def launch_apps2(test_obj):
+def launch_apps(test_obj):
     """ This function launches (makes HTTP POST requests) for apps.  It is used
         for instance and count tests.   Instance test will only have 1 count with X
         instances and is the simple case.
@@ -261,41 +190,27 @@ def instance_test_app(test_obj):
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
 
-    if test_obj.skipped:
-        pytest.skip("test has been skipped")
-        return
+    with clean_marathon_state(test_obj):
+        # launch
+        test_obj.start_test()
+        launch_results = test_obj.launch_results
+        try:
+            launch_apps(test_obj)
+        except:
+            # service unavail == wait for marathon
+            launch_results.failed('Failure to launched (but we still will wait for deploys)')
+            wait_for_marathon_up(test_obj)
+        else:
+            launch_results.completed()
 
-    # cleanup
-    # make sure no apps currently
-    wait_for_marathon_up(test_obj)
-    delete_all_apps_wait2()
-    wait_for_marathon_up(test_obj)
-
-    # launch
-    test_obj.start_test()
-    launch_results = test_obj.launch_results
-    try:
-        launch_apps2(test_obj)
-    except:
-        # service unavail == wait for marathon
-        launch_results.failed('Failure to launched (but we still will wait for deploys)')
-        wait_for_marathon_up(test_obj)
-    else:
-        launch_results.completed()
-
-    # deployment
-    try:
-        test_obj.reset_loop_count()
-        time_deployment2(test_obj)
-    except Exception as e:
-        print(e)
-        msg = str(e)
-        test_obj.deploy_results.failed(msg)
-
-    # undeploy
-    wait_for_marathon_up(test_obj)
-    delete_all_apps_wait2(test_obj)
-    wait_for_marathon_up(test_obj)
+        # deployment
+        try:
+            test_obj.reset_loop_count()
+            time_deployment2(test_obj)
+        except Exception as e:
+            print(e)
+            msg = str(e)
+            test_obj.deploy_results.failed(msg)
 
 
 def group_test_app(test_obj):
@@ -308,46 +223,32 @@ def group_test_app(test_obj):
 
     :param test_obj: Is of type ScaleTest and defines the criteria for the test and logs the results and events of the test.
     """
-    if test_obj.skipped:
-        pytest.skip("test has been skipped")
-        return
+    
+    with clean_marathon_state(test_obj):
+        # launch
+        test_obj.start_test()
+        launch_results = test_obj.launch_results
+        try:
+            launch_group(test_obj)
+        except Exception as e:
+            print(e)
+            # service unavail == wait for marathon
+            launch_results.failed('Failure to launched (but we still will wait for deploys)')
+            wait_for_marathon_up(test_obj)
+        else:
+            launch_results.completed()
 
-    try:
-        wait_for_marathon_up(test_obj)
-        delete_all_apps_wait2()
-        wait_for_marathon_up(test_obj)
-    except:
-        pass
-
-    # launch
-    test_obj.start_test()
-    launch_results = test_obj.launch_results
-    try:
-        launch_group_test(test_obj)
-    except Exception as e:
-        print(e)
-        # service unavail == wait for marathon
-        launch_results.failed('Failure to launched (but we still will wait for deploys)')
-        wait_for_marathon_up(test_obj)
-    else:
-        launch_results.completed()
-
-    # deployment
-    try:
-        test_obj.reset_loop_count()
-        time_deployment2(test_obj)
-    except Exception as e:
-        print(e)
-        msg = str(e)
-        test_obj.deploy_results.failed(msg)
-
-    # undeploy
-    wait_for_marathon_up(test_obj)
-    delete_all_apps_wait2(test_obj)
-    wait_for_marathon_up(test_obj)
+        # deployment
+        try:
+            test_obj.reset_loop_count()
+            time_deployment2(test_obj)
+        except Exception as e:
+            print(e)
+            msg = str(e)
+            test_obj.deploy_results.failed(msg)
 
 
-def delete_all_apps_wait2(test_obj=None, msg='undeployment failure'):
+def delete_all_apps_wait(test_obj=None, msg='undeployment failure'):
     """ Used to remove all instances of apps and wait until the deployment finishes
     """
 
@@ -595,41 +496,6 @@ def calculate_deployment_wait_time(test_obj, failure_count=0):
         wait_time = wait_time + 10
 
     return wait_time
-
-
-def scale_apps(count=1, instances=1):
-    test = "scaling apps: " + str(count) + " instances " + str(instances)
-
-    start = time.time()
-    launch_apps(count, instances)
-    complete = False
-    while not complete:
-        try:
-            time_deployment(test)
-            complete = True
-        except:
-            time.sleep(2)
-            pass
-
-    launch_time = elapse_time(start, time.time())
-    delete_all_apps_wait()
-    return launch_time
-
-
-def scale_groups(count=2):
-    test = "group test count: " + str(instances)
-    start = time.time()
-    try:
-        launch_group(count)
-    except:
-        # at high scale this will timeout but we still
-        # want the deployment time
-        pass
-
-    time_deployment(test)
-    launch_time = elapse_time(start, time.time())
-    delete_group_and_wait("test")
-    return launch_time
 
 
 def elapse_time(start, end=None):
@@ -1180,3 +1046,20 @@ def public_resources_available():
 def check_cluster_exists():
     response = http.get(shakedown.dcos_url())
     assert response.status_code == 200
+
+
+def ensure_clean_state(test_obj=None):
+    try:
+        wait_for_marathon_up(test_obj)
+        delete_all_apps_wait(test_obj)
+    except Exception as e:
+        print(e)
+
+    wait_for_marathon_up(test_obj)
+
+
+@contextlib.contextmanager
+def clean_marathon_state(test_obj=None):
+    ensure_clean_state(test_obj)
+    yield
+    ensure_clean_state(test_obj)
