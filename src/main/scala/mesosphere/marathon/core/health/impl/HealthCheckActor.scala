@@ -213,7 +213,7 @@ private[health] class HealthCheckActor(
 
     case Tick =>
       updateInstances()
-    //      scheduleNextHealthCheck()
+      scheduleNextHealthCheck()
 
     case InstancesUpdate(version, instances) if version == app.version =>
       purgeStatusOfDoneInstances(instances)
@@ -224,7 +224,6 @@ private[health] class HealthCheckActor(
 
     case instanceHealth: InstanceHealth =>
       updateInstanceHealth(instanceHealth)
-      scheduleNextHealthCheck()
 
     case result: HealthResult =>
       log.warning(s"Ignoring health result [$result] due to version mismatch.")
