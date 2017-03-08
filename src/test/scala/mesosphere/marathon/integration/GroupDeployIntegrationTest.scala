@@ -7,7 +7,7 @@ import mesosphere.marathon.api.v2.json.GroupUpdate
 import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck } //, WaitTestSupport }
 import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
 import org.apache.http.HttpStatus
-import spray.http.DateTime
+//import spray.http.DateTime
 
 import scala.concurrent.duration._
 
@@ -35,8 +35,7 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
     try {
       testCode(gid)
     } finally {
-      //marathon.deleteGroup(gid, force = true)
-      ()
+      marathon.deleteGroup(gid, force = true)
     }
   }
 
@@ -315,9 +314,9 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       val group = GroupUpdate(gid, Set(db, service, frontend))
 
       When("The group gets deployed")
-      var ping = Map.empty[PathId, DateTime]
+      var ping = Map.empty[PathId, Long]
       def storeFirst(health: IntegrationHealthCheck): Unit = {
-        if (!ping.contains(health.appId)) ping += health.appId -> DateTime.now
+        if (!ping.contains(health.appId)) ping += health.appId -> java.lang.System.currentTimeMillis() //DateTime.now
       }
       val dbHealth = appProxyCheck(db.id, "v1", state = true).withHealthAction(storeFirst)
       val serviceHealth = appProxyCheck(service.id, "v1", state = true).withHealthAction(storeFirst)
@@ -348,9 +347,9 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       )
 
       When("The group gets deployed")
-      var ping = Map.empty[PathId, DateTime]
+      var ping = Map.empty[PathId, Long]
       def storeFirst(health: IntegrationHealthCheck): Unit = {
-        if (!ping.contains(health.appId)) ping += health.appId -> DateTime.now
+        if (!ping.contains(health.appId)) ping += health.appId -> java.lang.System.currentTimeMillis() //DateTime.now
       }
       val dbHealth = appProxyCheck(db.id, "v1", state = true).withHealthAction(storeFirst)
       val serviceHealth = appProxyCheck(service.id, "v1", state = true).withHealthAction(storeFirst)
