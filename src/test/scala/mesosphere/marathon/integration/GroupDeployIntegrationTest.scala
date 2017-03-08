@@ -4,7 +4,7 @@ package integration
 import java.util.concurrent.atomic.AtomicInteger
 import mesosphere.AkkaIntegrationTest
 import mesosphere.marathon.api.v2.json.GroupUpdate
-import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck, WaitTestSupport }
+import mesosphere.marathon.integration.setup.{ EmbeddedMarathonTest, IntegrationHealthCheck } //, WaitTestSupport }
 import mesosphere.marathon.state.{ AppDefinition, PathId, UpgradeStrategy }
 import org.apache.http.HttpStatus
 import spray.http.DateTime
@@ -193,14 +193,20 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
 
       Then("The new version is deployed")
       val v2Checks = appProxyCheck(appId, "v2", state = true)
-      WaitTestSupport.validFor("all v2 apps are available", 10.seconds) { v2Checks.pingSince(2.seconds) }
+      eventually {
+        v2Checks.pinged should be(true) withClue "v2 apps did not come up"
+      }
+      //      WaitTestSupport.validFor("all v2 apps are available", 10.seconds) { v2Checks.pingSince(2.seconds) }
 
       When("A rollback to the first version is initiated")
+      v1Checks.pinged = false
       waitForDeployment(marathon.rollbackGroup(gid, create.value.version), 120.seconds)
 
       Then("The rollback will be performed and the old version is available")
-      v1Checks.healthy
-      WaitTestSupport.validFor("all v1 apps are available", 10.seconds) { v1Checks.pingSince(2.seconds) }
+      eventually {
+        v1Checks.pinged should be(true) withClue "v1 apps did not come up again"
+      }
+      //      WaitTestSupport.validFor("all v1 apps are available", 10.seconds) { v1Checks.pingSince(2.seconds) }
     }
 
     "during Deployment the defined minimum health capacity is never undershot" in temporaryGroup() { id =>
@@ -219,8 +225,11 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       val update = marathon.updateGroup(id, group.copy(apps = Some(Set(appProxy(appId, "v2", 2)))))
 
       Then("All v1 applications are kept alive")
-      v1Check.healthy
-      WaitTestSupport.validFor("all v1 apps are always available", 15.seconds) { v1Check.pingSince(3.seconds) }
+      v1Check.pinged = false
+      eventually {
+        v1Check.pinged should be(true) withClue "v1 are not alive"
+      }
+      //      WaitTestSupport.validFor("all v1 apps are always available", 15.seconds) { v1Check.pingSince(3.seconds) }
 
       When("The new application becomes healthy")
       v2Check.state = true //make v2 healthy, so the app can be cleaned
@@ -290,8 +299,10 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       val result = marathon.createGroup(group)
 
       Then("An unsuccessful response has been posted, with an error indicating cyclic dependencies")
+      println(s"######### ${result.entityString}")
+      result.success should be(false) withClue s"Response code is ${result.code}"
       val errors = (result.entityJson \ "details" \\ "errors").flatMap(_.as[Seq[String]])
-      errors.find(_.contains("cyclic dependencies")) shouldBe defined
+      errors.find(_.contains("cyclic dependencies")) shouldBe defined withClue s"""errors "$errors" did not contain "cyclic dependenies" error."""
     }
 
     "Applications with dependencies get deployed in the correct order" in {
@@ -315,8 +326,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
 
       Then("The correct order is maintained")
       ping should have size 3
-      ping(db.id) should be < ping(service.id)
-      ping(service.id) should be < ping(frontend.id)
+      ping(db.id) should be < ping(service.id) withClue s"database was deployed at ${ping(db.id)} and service at ${ping(service.id)}"
+      ping(service.id) should be < ping(frontend.id) withClue s"service was deployed at ${ping(service.id)} and frontend at ${ping(frontend.id)}"
     }
 
     "Groups with dependencies get deployed in the correct order" in {
@@ -348,8 +359,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
 
       Then("The correct order is maintained")
       ping should have size 3
-      ping(db.id) should be < ping(service.id)
-      ping(service.id) should be < ping(frontend.id)
+      ping(db.id) should be < ping(service.id) withClue s"database was deployed at ${ping(db.id)} and service at ${ping(service.id)}"
+      ping(service.id) should be < ping(frontend.id) withClue s"service was deployed at ${ping(service.id)} and frontend at ${ping(frontend.id)}"
     }
   }
 }
