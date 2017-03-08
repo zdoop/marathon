@@ -30,19 +30,18 @@ def make_handler(appId, version, url):
 
 
         def check_health(self):
-            # logging.debug("Query %s for health", url)
-            # url_req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            # with urlopen(url_req) as response:
-            #    res = response.read()
-            #    status = response.status
-            #    logging.debug("Current health is %s, %s", res, status)
+            logging.debug("Query %s for health", url)
+            url_req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urlopen(url_req) as response:
+                res = response.read()
+                status = response.status
+                logging.debug("Current health is %s, %s", res, status)
 
-            status = 200
-            self.send_response(status)
-            self.send_header('Content-type','text/html')
-            self.end_headers()
+                self.send_response(status)
+                self.send_header('Content-type','text/html')
+                self.end_headers()
 
-            # self.wfile.write(res)
+                self.wfile.write(res)
 
             logging.debug("Done processing health request.")
             return
