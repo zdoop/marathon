@@ -309,7 +309,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
   def appProxyHealthCheck(
     gracePeriod: FiniteDuration = 3.seconds,
-    interval: FiniteDuration = 1.second,
+    interval: FiniteDuration = 3.seconds,
     maxConsecutiveFailures: Int = Int.MaxValue,
     portIndex: Option[PortReference] = Some(PortReference.ByIndex(0))): MarathonHealthCheck =
     MarathonHttpHealthCheck(gracePeriod = gracePeriod, interval = interval, maxConsecutiveFailures = maxConsecutiveFailures, portIndex = portIndex)

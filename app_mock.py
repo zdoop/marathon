@@ -6,6 +6,7 @@ import os
 import platform
 import socketserver
 import sys
+import time
 import urllib.request
 from urllib.request import Request, urlopen
 
@@ -29,37 +30,43 @@ def make_handler(appId, version, url):
 
 
         def check_health(self):
-            url_req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            try:
-                with urlopen(url_req) as response:
-                    res = response.read()
-                    status = response.status
-                    log = "AppMock[{0} {1}]: current health is {2}, {3}".format(
-                        appId, version, res, status)
-                    print(log)
-                    logging.debug(log)
+            # logging.debug("Query %s for health", url)
+            # url_req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            # with urlopen(url_req) as response:
+            #    res = response.read()
+            #    status = response.status
+            #    logging.debug("Current health is %s, %s", res, status)
 
-                    self.send_header('Content-type','text/html')
-                    self.end_headers()
+            status = 200
+            self.send_response(status)
+            self.send_header('Content-type','text/html')
+            self.end_headers()
 
-                    self.send_response(status)
-                    self.wfile.write(res)
-                    return
-            except:
-                logging.exception('Could not check health')
+            # self.wfile.write(res)
+
+            logging.debug("Done processing health request.")
+            return
 
 
         def do_GET(self):
-            logging.debug("Got GET request")
-            if self.path == '/ping':
-                return self.handle_ping()
-            else:
-                return self.check_health()
+            try:
+                logging.debug("Got GET request")
+                if self.path == '/ping':
+                    return self.handle_ping()
+                else:
+                    return self.check_health()
+            except:
+                logging.exception('Could not handle GET request')
+                raise
 
 
         def do_POST(self):
-            logging.debug("Got POST request")
-            return self.check_health()
+            try:
+                logging.debug("Got POST request")
+                return self.check_health()
+            except:
+                logging.exception('Could not handle GET request')
+                raise
 
 
     return Handler
@@ -67,7 +74,7 @@ def make_handler(appId, version, url):
 
 if __name__ == "__main__":
     logging.basicConfig(
-        filename="/Users/kjeschkies/Projects/marathon/app_mock.log",
+        format='%(asctime)s %(levelname)-8s: %(message)s',
         level=logging.DEBUG)
     logging.info(platform.python_version())
     logging.debug(sys.argv)
