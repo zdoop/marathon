@@ -23,22 +23,6 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
   def nextAppId(): String = s"app-${appIdCount.getAndIncrement()}"
   def nextGroupId(): PathId = s"group-${groupIdCount.getAndIncrement()}".toRootTestPath
 
-  /**
-    * Creates a group id and tries to remove the group after the test run.
-    * @param testCode
-    * @tparam T
-    * @return
-    */
-  def temporaryGroup[T]()(testCode: PathId => T): T = {
-    val gid: PathId = s"temp-group-${groupIdCount.getAndIncrement()}".toRootTestPath
-
-    try {
-      testCode(gid)
-    } finally {
-      marathon.deleteGroup(gid, force = true)
-    }
-  }
-
   "GroupDeployment" should {
     "create empty group successfully" in {
       Given("A group which does not exist in marathon")
@@ -176,7 +160,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       waitForDeployment(update)
     }
 
-    "rollback from an upgrade of group" in temporaryGroup() { gid =>
+    "rollback from an upgrade of group" in {
+      val gid = nextGroupId()
       val appId = gid / nextAppId()
 
       Given(s"A group with one application with id $appId")
@@ -208,7 +193,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       //      WaitTestSupport.validFor("all v1 apps are available", 10.seconds) { v1Checks.pingSince(2.seconds) }
     }
 
-    "during Deployment the defined minimum health capacity is never undershot" in temporaryGroup() { id =>
+    "during Deployment the defined minimum health capacity is never undershot" in {
+      val id = nextGroupId()
       val appId = id / nextAppId()
 
       Given(s"A group with one application with id $appId")
