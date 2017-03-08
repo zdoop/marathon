@@ -289,7 +289,7 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       val gid = nextGroupId()
 
       Given(s"A group with id $gid with 3 circular dependent applications")
-      val db = appProxy(gid / "db", "v1", 1, dependencies = Set("/test/frontend1".toTestPath))
+      val db = appProxy(gid / "db", "v1", 1, dependencies = Set(gid / "frontend1"))
       val service = appProxy(gid / "service", "v1", 1, dependencies = Set(db.id))
       val frontend = appProxy(gid / "frontend1", "v1", 1, dependencies = Set(service.id))
       val group = GroupUpdate(gid, Set(db, service, frontend))
@@ -341,8 +341,8 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
         Set.empty[AppDefinition],
         Set(
           GroupUpdate(PathId("db"), apps = Set(db)),
-          GroupUpdate(PathId("service"), apps = Set(service)).copy(dependencies = Some(Set("/test/db".toTestPath))),
-          GroupUpdate(PathId("frontend"), apps = Set(frontend)).copy(dependencies = Some(Set("/test/service".toTestPath)))
+          GroupUpdate(PathId("service"), apps = Set(service)).copy(dependencies = Some(Set(db.id))),
+          GroupUpdate(PathId("frontend"), apps = Set(frontend)).copy(dependencies = Some(Set(service.id))
         )
       )
 
