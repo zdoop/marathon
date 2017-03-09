@@ -109,7 +109,7 @@ trait IntegrationTestLike extends UnitTestLike {
   override implicit lazy val patienceConfig: PatienceConfig = PatienceConfig(timeout = Span(90, Seconds), interval = Span(2, Seconds))
 }
 
-abstract class IntegrationTest extends WordSpec with IntegrationTestLike with RetryOnFailed
+abstract class IntegrationTest extends WordSpec with IntegrationTestLike //with RetryOnFailed
 
 trait AkkaIntegrationTestLike extends AkkaUnitTestLike with IntegrationTestLike {
   protected override lazy val akkaConfig: Config = ConfigFactory.parseString(

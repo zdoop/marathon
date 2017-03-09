@@ -232,7 +232,7 @@ class DeploymentManagerActor(
       self ! CancelDeletedConflicts(plan, conflicts, origSender)
     }.recover {
       case NonFatal(e) =>
-        logger.info(s"Failed to start deployment ${plan.id}. Repository delete failed with: $e")
+        logger.warn(s"Failed to start deployment ${plan.id}. Repository delete failed with: $e")
         self ! FailedRepositoryOperation(plan, e)
     }
     result

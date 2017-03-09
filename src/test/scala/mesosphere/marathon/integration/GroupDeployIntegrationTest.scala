@@ -28,6 +28,7 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
     try {
       testCode(gid)
     } finally {
+      println("### start group clean up")
       marathon.deleteGroup(gid, force = true)
       println("##### clean up done")
     }
