@@ -23,6 +23,16 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
   def nextAppId(): String = s"app-${appIdCount.getAndIncrement()}"
   def nextGroupId(): PathId = s"group-${groupIdCount.getAndIncrement()}".toRootTestPath
 
+  def temporaryGroup(testCode: (PathId) => Any): Unit = {
+    val gid = nextGroupId()
+    try {
+      testCode(gid)
+    } finally {
+      marathon.deleteGroup(gid, force = true)
+      println("##### clean up done")
+    }
+  }
+
   "GroupDeployment" should {
     "create empty group successfully" in {
       Given("A group which does not exist in marathon")
@@ -221,51 +231,52 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       waitForDeployment(update)
     }
 
-    "An upgrade in progress cannot be interrupted without force" in {
-      val id = nextGroupId()
-      val appId = id / nextAppId()
+    "An upgrade in progress cannot be interrupted without force" in temporaryGroup { gid =>
+      val appId = gid / nextAppId()
 
       Given(s"A group with one application with id $appId with an upgrade in progress")
       val proxy = appProxy(appId, "v1", 2)
-      val group = GroupUpdate(id, Set(proxy))
+      val group = GroupUpdate(gid, Set(proxy))
       val create = marathon.createGroup(group)
       waitForDeployment(create)
       appProxyCheck(appId, "v2", state = false) //will always fail
-      marathon.updateGroup(id, group.copy(apps = Some(Set(appProxy(appId, "v2", 2)))))
+      marathon.updateGroup(gid, group.copy(apps = Some(Set(appProxy(appId, "v2", 2)))))
 
       When("Another upgrade is triggered, while the old one is not completed")
-      val result = marathon.updateGroup(id, group.copy(apps = Some(Set(appProxy(appId, "v3", 2)))))
+      val result = marathon.updateGroup(gid, group.copy(apps = Some(Set(appProxy(appId, "v3", 2)))))
+      println("##### update v3")
 
       Then("An error is indicated")
       result.code should be (HttpStatus.SC_CONFLICT)
       waitForEvent("group_change_failed")
 
       When("Another upgrade is triggered with force, while the old one is not completed")
-      val force = marathon.updateGroup(id, group.copy(apps = Some(Set(appProxy(appId, "v4", 2)))), force = true)
+      val force = marathon.updateGroup(gid, group.copy(apps = Some(Set(appProxy(appId, "v4", 2)))), force = true)
+      println("##### update v4")
 
       Then("The update is performed")
       waitForDeployment(force)
+      println("##### all updates done. success")
     }
 
-    "A group with a running deployment can not be deleted without force" in {
-      val id = nextGroupId()
-      val appId = id / nextAppId()
+    "A group with a running deployment can not be deleted without force" in temporaryGroup{ gid =>
+      val appId = gid / nextAppId()
 
       Given(s"A group with one application with id $appId with an upgrade in progress")
       val proxy = appProxy(appId, "v1", 2)
       appProxyCheck(appId, "v1", state = false) //will always fail
-      val group = GroupUpdate(id, Set(proxy))
+      val group = GroupUpdate(gid, Set(proxy))
       val create = marathon.createGroup(group)
 
       When("Delete the group, while the deployment is in progress")
-      val deleteResult = marathon.deleteGroup(id)
+      val deleteResult = marathon.deleteGroup(gid)
 
       Then("An error is indicated")
       deleteResult.code should be (HttpStatus.SC_CONFLICT)
       waitForEvent("group_change_failed")
 
       When("Delete is triggered with force, while the deployment is not completed")
-      val force = marathon.deleteGroup(id, force = true)
+      val force = marathon.deleteGroup(gid, force = true)
 
       Then("The delete is performed")
       waitForDeployment(force)
@@ -287,11 +298,10 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       result.success should be(false) withClue s"Response code is ${result.code}"
 
       val errors = (result.entityJson \ "details" \\ "errors").flatMap(_.as[Seq[String]])
-      errors.find(_.contains("cyclic dependencies")) shouldBe defined withClue s"""errors "$errors" did not contain "cyclic dependenies" error."""
+      errors.find(_.contains("cyclic dependencies")) shouldBe defined withClue s"""errors "$errors" did not contain "cyclic dependencies" error."""
     }
 
-    "Applications with dependencies get deployed in the correct order" in {
-      val gid = nextGroupId()
+    "Applications with dependencies get deployed in the correct order" in temporaryGroup { gid =>
 
       Given(s"A group with id $gid with 3 dependent applications")
       val db = appProxy(gid / "db", "v1", 1)
@@ -315,8 +325,7 @@ class GroupDeployIntegrationTest extends AkkaIntegrationTest with EmbeddedMarath
       ping(service.id) should be < ping(frontend.id) withClue s"service was deployed at ${ping(service.id)} and frontend at ${ping(frontend.id)}"
     }
 
-    "Groups with dependencies get deployed in the correct order" in {
-      val gid = nextGroupId()
+    "Groups with dependencies get deployed in the correct order" in temporaryGroup { gid =>
 
       Given(s"A group with id $gid with 3 dependent applications")
       val db = appProxy(gid / "db/db1", "v1", 1)
