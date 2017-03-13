@@ -25,6 +25,13 @@ def index_of_first_failure(stats, marathon_type, test_type):
     return -1
 
 
+def pad(array, size):
+    current_size = len(array)
+    pad = np.zeros(size - current_size)
+    padded = array.tolist() + pad.tolist()
+    return np.array(padded)
+
+
 def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
     """ Plots a specific test graph.
         In addition, it sets the legend title, and flags the highest scale reached.
@@ -36,6 +43,7 @@ def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
 
     timings = np.array(deploy_time)
     title = '{} Scale Times'.format(test_type.title())
+    timings = pad(timings, len(xticks))
     timings_handle, = plot.plot(xticks, timings, label=title)
 
     fail_index = index_of_first_failure(stats, marathon_type, test_type)
@@ -56,6 +64,7 @@ def plot_test_errors(plot, stats, marathon_type, test_type, xticks):
     plot.set_title("Errors During Test")
     errors = np.array(test_errors)
     title = '{} Errors'.format(test_type.title())
+    errors = pad(timings, len(errors))
     errors_handle, = plot.plot(xticks, errors, label=title, marker='o', linestyle='None')
 
 
