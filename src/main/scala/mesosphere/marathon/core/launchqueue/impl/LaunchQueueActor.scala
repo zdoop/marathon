@@ -120,7 +120,7 @@ private[impl] class LaunchQueueActor(
       //   * TaskOp gets processed and one of the update steps calls this here
       //   * ... blocked until timeout ...
       //   * The task launch notification (that the AppTaskLauncherActor waits for) gets sent to the actor
-      sender() ! Done // None
+      sender() ! Done
   }
 
   private[this] def receiveMessagesToSuspendedActor: Receive = {
