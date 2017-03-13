@@ -25,7 +25,7 @@ def index_of_first_failure(stats, marathon_type, test_type):
     return -1
 
 
-def plot_test_timing(plot, stats, marathon_type, test_type, x):
+def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
     """ Plots a specific test graph.
         In addition, it sets the legend title, and flags the highest scale reached.
     """
@@ -36,7 +36,7 @@ def plot_test_timing(plot, stats, marathon_type, test_type, x):
 
     timings = np.array(deploy_time)
     title = '{} Scale Times'.format(test_type.title())
-    timings_handle, = plot.plot(x, timings, label=title)
+    timings_handle, = plot.plot(xticks, timings, label=title)
 
     fail_index = index_of_first_failure(stats, marathon_type, test_type)
     if fail_index > 0:
@@ -46,7 +46,7 @@ def plot_test_timing(plot, stats, marathon_type, test_type, x):
         plot.text(fail_index, timings[fail_index], text,  wrap=True)
 
 
-def plot_test_errors(plot, stats, marathon_type, test_type, x):
+def plot_test_errors(plot, stats, marathon_type, test_type, xticks):
     """ Plots the number of errors for a given test
     """
     test_errors = stats.get(get_key(marathon_type, test_type, 'errors'))
@@ -56,7 +56,7 @@ def plot_test_errors(plot, stats, marathon_type, test_type, x):
     plot.set_title("Errors During Test")
     errors = np.array(test_errors)
     title = '{} Errors'.format(test_type.title())
-    errors_handle, = plot.plot(x, errors, label=title, marker='o', linestyle='None')
+    errors_handle, = plot.plot(xticks, errors, label=title, marker='o', linestyle='None')
 
 
 def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
@@ -84,22 +84,22 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
     time_plot.title.set_text('Marathon Scale Test for v{}'.format(metadata['marathon-version']))
     targets = stats.get(get_key(marathon_type, test_types[0], 'target'))
 
-    x = np.array(range(len(targets)))
+    xticks = np.array(range(len(targets)))
 
-    plt.xticks(x, targets)
+    plt.xticks(xticks, targets)
     # time_plot.set_xticks(x, targets)
     time_plot.set_xlabel('Scale Targets on {} nodes'.format(metadata['private-agents']))
     time_plot.set_ylabel('Time to Reach Scale (sec)')
 
     # graph of all the things
     for test_type in test_types:
-        plot_test_timing(time_plot, stats, marathon_type, test_type, x)
+        plot_test_timing(time_plot, stats, marathon_type, test_type, xticks)
     time_plot.legend(loc='upper left')
 
     # graph the errors if they exist
     if error_plot is not None:
         for test_type in test_types:
-            plot_test_errors(error_plot, stats, marathon_type, test_type, x)
+            plot_test_errors(error_plot, stats, marathon_type, test_type, xticks)
         error_plot.legend(loc='upper left')
 
     plt.savefig(file_name)
