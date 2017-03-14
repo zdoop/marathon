@@ -125,7 +125,6 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
         error_plot.legend(loc='upper left')
         error_plot.set_ylim(bottom=0, top=roundup_top(top))
 
-
     plt.savefig(file_name)
 
 

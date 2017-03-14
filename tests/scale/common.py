@@ -177,7 +177,6 @@ def launch_apps(test_obj):
                 quiet_wait_for_marathon_up(test_obj)
 
 
-
 def instance_test_app(test_obj):
     """
     Runs the `instance` scale test for apps in marathon.   This is for apps and not pods.
@@ -989,6 +988,7 @@ def scaletest_resources(test_obj):
         return resources_needed(test_obj.target, .01, 32)
 
     return get_resource_need()
+
 
 def outstanding_deployments():
     """ Provides a count of deployments still looking to land.

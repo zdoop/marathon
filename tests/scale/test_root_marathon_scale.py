@@ -196,15 +196,26 @@ def collect_stats():
         key = get_test_key(scale_test, 'deployment_status')
         stats.get(key).append(pass_status(scale_test, scale_test.deploy_results.success))
 
-        # key = get_test_key(scale_test, 'errors')
-        # stats.get(key).append(total_errors(scale_test))
+        key = get_test_key(scale_test, 'errors')
+        stats.get(key).append(total_errors(scale_test))
 
     return stats
 
 
 def total_errors(scale_test):
     errors = 0
+    for event in scale_test.events:
+        if ('Error (launch failure):' in event or
+                'Error (deployment error):' in event or
+                'Fatal (consecutive launch):' in event or
+                'Fatal (not scaling):' in event or
+                'Error (scaling error):' in event or
+                'Error (scale timeout):' in event or
+                'Futures timed out' in event):
+            errors += 1
+
     return errors
+
 
 def pass_status(test, successful):
     if test.skipped:
