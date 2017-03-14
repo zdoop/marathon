@@ -18,11 +18,11 @@ node('shakedown') {
     }
 
     stage('Installing Dependencies') {
-      sh "apk --update add freetype-dev libpng"
-      sh "pip3 install retrying"
+      sh "apk --update add freetype-dev libpng musl-dev linux-headers gcc"
+      sh "ln -s /usr/include/locale.h /usr/include/xlocale.h"
       sh "pip3 install numpy"
+      sh "pip3 install retrying"
       sh "pip3 install matplotlib"
-
     }
 
     stage('Configure DCOS Cluster') {
