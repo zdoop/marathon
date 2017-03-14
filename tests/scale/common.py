@@ -1,5 +1,6 @@
 import pytest
 import retrying
+import shakedown
 import time
 import traceback
 
@@ -9,6 +10,8 @@ from dcos import mesos
 from shakedown import *
 from utils import *
 
+MAX_CONSECUTIVE_SCALE_FAILS = 9
+MAX_HOURS_OF_TEST = 4
 
 def app(id=1, instances=1):
     app_json = {
@@ -162,12 +165,12 @@ def launch_apps(test_obj):
                     raise Exception(abort_msg)
 
         except Exception as e:
-            test_obj.add_event('Error (launch failure): {}'.format(str(e)))
+            test_obj.add_event('Error (launch failure): {}'.format(e))
 
             scale_failure_count = scale_failure_count + 1
 
             # 9 tries to see if scale increases, if no abort
-            if scale_failure_count > 9:
+            if scale_failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
                 abort_msg = 'Fatal (consecutive launch): Aborting based on too many failures: {}'.format(scale_failure_count)
                 test_obj.add_event(abort_msg)
                 raise Exception(abort_msg)
@@ -346,17 +349,17 @@ def count_deployment(test_obj, step_target):
 
         except DCOSNotScalingException as e:
             print(e)
-            msg = "Fatal (not scaling): {}".format(str(e))
+            msg = "Fatal (not scaling): {}".format(e)
             deploy_results.failed(msg)
             abort = True
 
         except Exception as e:
-            msg = "Error (deployment error): {}".format(str(e))
+            msg = "Error (deployment error): {}".format(e)
             test_obj.add_event(msg)
             failure_count = failure_count + 1
 
             # consecutive failures > x will fail test
-            if failure_count > 9:
+            if failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
                 message = 'Too many failures query for deployments'
                 print(e)
                 print(message)
@@ -406,7 +409,7 @@ def time_deployment2(test_obj):
         except DCOSScaleException as e:
             # current scale is lower than previous scale
             print(e)
-            msg = "Error (scaling error): {}".format(str(e))
+            msg = "Error (scaling error): {}".format(e)
             test_obj.add_event(msg)
             scale_failure_count = scale_failure_count + 1
 
@@ -422,12 +425,12 @@ def time_deployment2(test_obj):
 
         except DCOSNotScalingException as e:
             print(e)
-            msg = "Fatal (not scaling): {}".format(str(e))
+            msg = "Fatal (not scaling): {}".format(e)
             deploy_results.failed(msg)
             abort = True
 
         except Exception as e:
-            msg = "Error (deployment error): {}".format(str(e))
+            msg = "Error (deployment error): {}".format(e)
             test_obj.add_event(msg)
             failure_count = failure_count + 1
 
@@ -460,7 +463,7 @@ def abort_deployment_check(test_obj):
         Currently it looks at time duration of this test (10hrs max)
     """
 
-    if elapse_time(test_obj.start) > timedelta(hours=4).total_seconds():
+    if elapse_time(test_obj.start) > timedelta(hours=MAX_HOURS_OF_TEST).total_seconds():
         test_obj.add_event("Error (scale timeout): Test taking longer than {} hours".format(hours))
         return True
 
@@ -510,19 +513,19 @@ def write_meta_data(metadata={}, filename='meta-data.json'):
         json.dump(metadata, out)
 
 
-def get_metadata():
-    version = None
+def get_cluster_metadata():
 
     try:
         version = ee_version()
     except:
-        pass
+        version = None
 
     resources = available_resources()
     metadata = {
         'dcos-version': dcos_version(),
         'marathon-version': get_marathon_version(),
         'private-agents': len(get_private_agents()),
+        'master-count': len(shakedown.get_all_masters()),
         'resources': {
             'cpus': resources.cpus,
             'memory': resources.mem
@@ -540,27 +543,6 @@ def get_marathon_version():
     client = marathon.create_client()
     about = client.get_about()
     return about.get("version")
-
-
-def cluster_info(mom_name='marathon-user'):
-    agents = get_private_agents()
-    print("agents: {}".format(len(agents)))
-    client = marathon.create_client()
-    about = client.get_about()
-    print("marathon version: {}".format(about.get("version")))
-    # see if there is a MoM
-
-    if service_available_predicate('marathon-user'):
-        with marathon_on_marathon(mom_name):
-            try:
-                client = marathon.create_client()
-                about = client.get_about()
-                print("marathon MoM version: {}".format(about.get("version")))
-
-            except Exception as e:
-                print("Marathon MoM not present")
-    else:
-        print("Marathon MoM not present")
 
 
 def get_mom_json(version='v1.3.6'):

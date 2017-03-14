@@ -118,7 +118,7 @@ def previous_style_test_failed(current_test):
 
 def setup_module(module):
     delete_all_apps_wait()
-    cluster_info()
+    print(get_cluster_metadata())
     print('testing root marathon')
     print("private resources: {}".format(private_resources_available()))
 
@@ -128,7 +128,7 @@ def teardown_module(module):
     stats = collect_stats()
     write_csv(stats)
     read_csv()
-    metadata = get_metadata()
+    metadata = get_cluster_metadata()
     write_meta_data(metadata)
     create_scale_graph(stats, metadata, test_types)
     try:
@@ -205,16 +205,20 @@ def collect_stats():
 def total_errors(scale_test):
     errors = 0
     for event in scale_test.events:
-        if ('Error (launch failure):' in event or
-                'Error (deployment error):' in event or
-                'Fatal (consecutive launch):' in event or
-                'Fatal (not scaling):' in event or
-                'Error (scaling error):' in event or
-                'Error (scale timeout):' in event or
-                'Futures timed out' in event):
+        if is_error(event):
             errors += 1
 
     return errors
+
+
+def is_error(event):
+    return ('Error (launch failure):' in event or
+            'Error (deployment error):' in event or
+            'Fatal (consecutive launch):' in event or
+            'Fatal (not scaling):' in event or
+            'Error (scaling error):' in event or
+            'Error (scale timeout):' in event or
+            'Futures timed out' in event)
 
 
 def pass_status(test, successful):

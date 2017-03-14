@@ -39,6 +39,18 @@ def pad(array, size):
 def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
     """ Plots a specific test graph.
         In addition, it sets the legend title, and flags the highest scale reached.
+
+        :param plot: The matplotlib subplot object is the object that will be plotted
+        :type plot: matplotlib subplot
+        :param stats: This map contains the data to be plotted
+        :type stats: map
+        :param marathon_type: The type of marathon is part of the map key.  For scale tests it is `root` (vs. mom1)
+        :type marathon_type: str
+        :param test_type: Defines the test type, usually {instances, count, group}
+        :type test_type: str
+        :param xticks: An array of scale targets (1, 10, 100) for the x axis of the plot
+        :type xticks: array
+
     """
     deploy_time = stats.get(get_key(marathon_type, test_type, 'deploy_time'))
 
@@ -60,6 +72,18 @@ def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
 
 def plot_test_errors(plot, stats, marathon_type, test_type, xticks):
     """ Plots the number of errors for a given test
+
+        :param plot: The matplotlib subplot object is the object that will be plotted
+        :type plot: matplotlib subplot
+        :param stats: This map contains the data to be plotted
+        :type stats: map
+        :param marathon_type: The type of marathon is part of the map key.  For scale tests it is `root` (vs. mom1)
+        :type marathon_type: str
+        :param test_type: Defines the test type, usually {instances, count, group}
+        :type test_type: str
+        :param xticks: An array of scale targets (1, 10, 100) for the x axis of the plot
+        :type xticks: array
+
     """
     test_errors = stats.get(get_key(marathon_type, test_type, 'errors'))
     if test_errors is None or len(test_errors) == 0:
@@ -77,6 +101,16 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
     """ Creates a 1up or 2up scale graph depending on if error information is provided.
         The first 1up graph "time_plot", is x = scale and y = time to reach scale
         The second graph "error_plot", is an error graph that plots the number of errors that occurred during the test.
+
+        :param stats: This map contains the data to be plotted
+        :type stats: map
+        :param metadata: The JSON object that contains the metadata for the cluster under test
+        :type metadata: JSON
+        :param test_types: An array of test types to be graphed, usually {instances, count, group}
+        :type test_types: array
+        :param file_name: The file name of the graph to create
+        :type file_name: str
+
     """
     marathon_type = metadata['marathon']
     error_plot = None
@@ -123,12 +157,12 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
                 top = largest
 
         error_plot.legend(loc='upper left')
-        error_plot.set_ylim(bottom=0, top=roundup_top(top))
+        error_plot.set_ylim(bottom=0, top=roundup_to_nearest_10(top))
 
     plt.savefig(file_name)
 
 
-def roundup_top(x):
+def roundup_to_nearest_10(x):
     return int(math.ceil(x / 10.0)) * 10
 
 
@@ -136,6 +170,13 @@ def get_scale_targets(stats, marathon_type, test_types):
     """ Returns the scale targets 1, 10, 100, 1000
         It is possible that some tests are ignored so we may have to
         loop to grab the right list.
+
+        :param stats: This map contains the data to be plotted
+        :type stats: map
+        :param marathon_type: The type of marathon is part of the map key.  For scale tests it is `root` (vs. mom1)
+        :type marathon_type: str
+        :param test_types: An array of test types to be graphed, usually {instances, count, group}
+        :type test_types: array
     """
     targets = None
     for test_type in test_types:
@@ -148,6 +189,13 @@ def get_scale_targets(stats, marathon_type, test_types):
 
 def error_graph_enabled(stats, marathon_type, test_types):
     """ Returns true if there is any error data to graph
+
+        :param stats: This map contains the data to be plotted
+        :type stats: map
+        :param marathon_type: The type of marathon is part of the map key.  For scale tests it is `root` (vs. mom1)
+        :type marathon_type: str
+        :param test_types: An array of test types to be graphed, usually {instances, count, group}
+        :type test_types: array            
     """
     enabled = False
     for test_type in test_types:
