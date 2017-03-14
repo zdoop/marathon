@@ -115,7 +115,7 @@ def count_test_app(test_obj):
         try:
             launch_apps(test_obj)
         except Exception as e:
-            launch_results.failed('Failure to launch: {}'.format(str(e)))
+            launch_results.failed(str(e))
             wait_for_marathon_up(test_obj)
         else:
             launch_results.completed()
@@ -232,7 +232,7 @@ def group_test_app(test_obj):
         except Exception as e:
             print(e)
             # service unavail == wait for marathon
-            launch_results.failed('Failure to launched (but we still will wait for deploys)')
+            launch_results.failed(str(e))
             wait_for_marathon_up(test_obj)
         else:
             launch_results.completed()
@@ -747,7 +747,7 @@ class LaunchResults(object):
     def failed(self, message=''):
         self.success = False
         self.current_response_time(time.time())
-        self.current_test.add_event('launch failed due to: {}'.format(message))
+        self.current_test.add_event('Error (launch failure): {}'.format(message))
 
 
 class DeployResults(object):
@@ -823,7 +823,7 @@ class DeployResults(object):
         self.current_test.failed(message)
         self.success = False
         self.current_response_time(time.time())
-        self.current_test.add_event('deployment failed due to: {}'.format(message))
+        self.current_test.add_event('Error (deployment failure): {}'.format(message))
         self.current_test.add_event('scale reached: {}'.format(self.current_scale))
 
 
