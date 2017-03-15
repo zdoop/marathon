@@ -13,6 +13,7 @@ from utils import *
 MAX_CONSECUTIVE_SCALE_FAILS = 9
 MAX_HOURS_OF_TEST = 4
 
+
 def app(id=1, instances=1):
     app_json = {
       "id": "",
@@ -1084,3 +1085,29 @@ def get_style_key_base(marathon_name, style):
 
 def get_key(marathon_name, style, key):
     return "{}_{}".format(get_style_key_base(marathon_name, style), key)
+
+
+def empty_stats():
+        return {
+            'root_instances_target': [],
+            'root_instances_max': [],
+            'root_instances_deploy_time': [],
+            'root_instances_human_deploy_time': [],
+            'root_instances_launch_status': [],
+            'root_instances_deployment_status': [],
+            'root_instances_errors': [],
+            'root_count_target': [],
+            'root_count_max': [],
+            'root_count_deploy_time': [],
+            'root_count_human_deploy_time': [],
+            'root_count_launch_status': [],
+            'root_count_deployment_status': [],
+            'root_count_errors': [],
+            'root_group_target': [],
+            'root_group_max': [],
+            'root_group_deploy_time': [],
+            'root_group_human_deploy_time': [],
+            'root_group_launch_status': [],
+            'root_group_deployment_status': [],
+            'root_group_errors': []
+        }

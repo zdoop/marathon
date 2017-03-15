@@ -1,8 +1,15 @@
+#!/usr/bin/env python
+
+import click
+import csv
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import sys
 
-from common import get_key
+from dcos.errors import DCOSException
+
+from common import get_key, empty_stats
 """
     Graph functions for scale graphs.
     Prints 1up and 2up graphs of scale timings and errors.
@@ -70,6 +77,14 @@ def plot_test_timing(plot, stats, marathon_type, test_type, xticks):
         plot.text(fail_index, timings[fail_index], text,  wrap=True)
 
 
+class GraphException(DCOSException):
+    """ Raised when there is a issue with the ability to graph
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+
 def plot_test_errors(plot, stats, marathon_type, test_type, xticks):
     """ Plots the number of errors for a given test
 
@@ -97,7 +112,7 @@ def plot_test_errors(plot, stats, marathon_type, test_type, xticks):
     return max(test_errors)
 
 
-def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
+def create_scale_graph(stats, metadata, file_name='scale.png'):
     """ Creates a 1up or 2up scale graph depending on if error information is provided.
         The first 1up graph "time_plot", is x = scale and y = time to reach scale
         The second graph "error_plot", is an error graph that plots the number of errors that occurred during the test.
@@ -106,12 +121,13 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
         :type stats: map
         :param metadata: The JSON object that contains the metadata for the cluster under test
         :type metadata: JSON
-        :param test_types: An array of test types to be graphed, usually {instances, count, group}
-        :type test_types: array
         :param file_name: The file name of the graph to create
         :type file_name: str
 
     """
+    # strong prefer to have this discoverable, perhaps in the metadata
+    test_types = ['instances', 'count', 'group']
+
     marathon_type = metadata['marathon']
     error_plot = None
     fig = None
@@ -131,8 +147,7 @@ def create_scale_graph(stats, metadata, test_types=[], file_name='scale.png'):
     time_plot.title.set_text('Marathon Scale Test for v{}'.format(metadata['marathon-version']))
     targets = get_scale_targets(stats, marathon_type, test_types)
     if targets is None:
-        print('Unable to create graph due without targets')
-        return
+        raise GraphException('Unable to create graph due without targets')
 
     xticks = np.array(range(len(targets)))
 
@@ -195,7 +210,7 @@ def error_graph_enabled(stats, marathon_type, test_types):
         :param marathon_type: The type of marathon is part of the map key.  For scale tests it is `root` (vs. mom1)
         :type marathon_type: str
         :param test_types: An array of test types to be graphed, usually {instances, count, group}
-        :type test_types: array            
+        :type test_types: array
     """
     enabled = False
     for test_type in test_types:
@@ -221,3 +236,52 @@ def get_resources(metadata):
         print(e)
 
     return (agents, cpus, mem)
+
+
+def load(csvfile):
+    """ This is suppose to be short-term.  Teammates have better ideas on how to structure the data.
+        I would like to not break the ability to call it directly from the test (instead of shelling out).
+        index after table header:
+        0 - target - expected scale
+        1 - max  -  actual scale
+        2 - deploy_time
+        3 - human_deploy_time
+        4 - launch_status
+        5 - deployment_status
+    """
+    row_keys = ['target', 'max', 'deploy_time', 'human_deploy_time', 'launch_status', 'deployment_status']
+    stats = empty_stats()
+    current_marathon = None
+    current_test_type = None
+    index_from_header = 0
+    with open(csvfile, 'r') as f:
+        reader = csv.reader(f, quoting=csv.QUOTE_NONNUMERIC)
+        for i, row in enumerate(reader):
+            if 'Marathon:' in row:
+                current_marathon = row[1]
+                current_test_type = row[2]
+                index_from_header = 0
+            elif len(row) > 0:
+                key = get_key(current_marathon, current_test_type, row_keys[i - 1])
+                stats[key] = row
+
+    return stats
+
+
+@click.command()
+@click.option('--csvfile', default='scale-test.csv', help='Name of csv file to graph')
+@click.option('--metadatafile', default='meta-data.json', help='Name of meta-data file to use for graphing')
+@click.option('--graphfile', default='scale.png', help='Name of graph to create')
+def main(csvfile, metadatafile, graphfile):
+    """
+        CLI entry point for graphing scale data.
+        Typically, scale tests create a scale-test.csv file which contains the graph points.
+        It also produces a meta-data.json which is necessary for the graphing process.
+    """
+    stats = load(csvfile)
+    print(stats)
+    # graph(stats)
+
+
+if __name__ == '__main__':
+    main()

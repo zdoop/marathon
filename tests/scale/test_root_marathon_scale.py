@@ -124,13 +124,12 @@ def setup_module(module):
 
 
 def teardown_module(module):
-    test_types = ['instances', 'count', 'group']
     stats = collect_stats()
     write_csv(stats)
     read_csv()
     metadata = get_cluster_metadata()
     write_meta_data(metadata)
-    create_scale_graph(stats, metadata, test_types)
+    create_scale_graph(stats, metadata)
     try:
         delete_all_apps_wait()
     except:
@@ -148,29 +147,7 @@ def log_current_test(current_test):
 
 
 def collect_stats():
-    stats = {
-        'root_instances_target': [],
-        'root_instances_max': [],
-        'root_instances_deploy_time': [],
-        'root_instances_human_deploy_time': [],
-        'root_instances_launch_status': [],
-        'root_instances_deployment_status': [],
-        'root_instances_errors': [],
-        'root_count_target': [],
-        'root_count_max': [],
-        'root_count_deploy_time': [],
-        'root_count_human_deploy_time': [],
-        'root_count_launch_status': [],
-        'root_count_deployment_status': [],
-        'root_count_errors': [],
-        'root_group_target': [],
-        'root_group_max': [],
-        'root_group_deploy_time': [],
-        'root_group_human_deploy_time': [],
-        'root_group_launch_status': [],
-        'root_group_deployment_status': [],
-        'root_group_errors': []
-    }
+    stats = empty_stats()
 
     for scale_test in test_log:
         print(scale_test)
@@ -244,8 +221,7 @@ def write_csv(stats, filename='scale-test.csv'):
 
 
 def write_stat_lines(f, w, stats, marathon_name, test_type):
-        f.write('Marathon: {}, {}'.format('root', test_type))
-        f.write('\n')
+        w.writerow(['Marathon:', 'root', test_type])
         w.writerow(stats[get_key(marathon_name, test_type, 'target')])
         w.writerow(stats[get_key(marathon_name, test_type, 'max')])
         w.writerow(stats[get_key(marathon_name, test_type, 'deploy_time')])
