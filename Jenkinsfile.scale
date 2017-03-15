@@ -20,7 +20,7 @@ node('shakedown') {
     stage('Installing Dependencies') {
       sh "apk --update add freetype-dev libpng musl-dev linux-headers gcc make cmake  g++ gfortran"
       sh "ln -s /usr/include/locale.h /usr/include/xlocale.h"
-      sh "pip3 install numpy matplotlib"
+      sh "pip3 install numpy matplotlib click"
     }
 
     stage('Configure DCOS Cluster') {
