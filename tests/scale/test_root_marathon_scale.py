@@ -228,6 +228,7 @@ def write_stat_lines(f, w, stats, marathon_name, test_type):
         w.writerow(stats[get_key(marathon_name, test_type, 'human_deploy_time')])
         w.writerow(stats[get_key(marathon_name, test_type, 'launch_status')])
         w.writerow(stats[get_key(marathon_name, test_type, 'deployment_status')])
+        w.writerow(stats[get_key(marathon_name, test_type, 'errors')])
         f.write('\n')
 
 

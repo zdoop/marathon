@@ -249,8 +249,9 @@ def load(csvfile):
         3 - human_deploy_time
         4 - launch_status
         5 - deployment_status
+        6 - errors
     """
-    row_keys = ['target', 'max', 'deploy_time', 'human_deploy_time', 'launch_status', 'deployment_status']
+    row_keys = ['target', 'max', 'deploy_time', 'human_deploy_time', 'launch_status', 'deployment_status', 'errors']
     stats = empty_stats()
     current_marathon = None
     current_test_type = None
@@ -286,7 +287,7 @@ def main(csvfile, metadatafile, graphfile):
     """
     stats = load(csvfile)
     metadata = load_metadata(metadatafile)
-    create_scale_graph(stats, metadata)
+    create_scale_graph(stats, metadata, graphfile)
 
 
 if __name__ == '__main__':
