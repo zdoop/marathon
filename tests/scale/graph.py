@@ -264,8 +264,9 @@ def load(csvfile):
                 current_test_type = row[2]
                 index_from_header = 0
             elif len(row) > 0:
-                key = get_key(current_marathon, current_test_type, row_keys[i - 1])
+                key = get_key(current_marathon, current_test_type, row_keys[index_from_header])
                 stats[key] = row
+                index_from_header += 1
 
     return stats
 
