@@ -2,6 +2,7 @@
 
 import click
 import csv
+import json
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -268,6 +269,11 @@ def load(csvfile):
     return stats
 
 
+def load_metadata(file):
+    with open(file) as json_data:
+        return json.load(json_data)
+
+
 @click.command()
 @click.option('--csvfile', default='scale-test.csv', help='Name of csv file to graph')
 @click.option('--metadatafile', default='meta-data.json', help='Name of meta-data file to use for graphing')
@@ -279,8 +285,8 @@ def main(csvfile, metadatafile, graphfile):
         It also produces a meta-data.json which is necessary for the graphing process.
     """
     stats = load(csvfile)
-    print(stats)
-    # graph(stats)
+    metadata = load_metadata(metadatafile)
+    create_scale_graph(stats, metadata)
 
 
 if __name__ == '__main__':
