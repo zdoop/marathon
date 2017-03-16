@@ -13,6 +13,27 @@ from utils import *
 MAX_CONSECUTIVE_SCALE_FAILS = 9
 MAX_HOURS_OF_TEST = 4
 
+EVENT_HEADER = '    event:'
+
+ERROR_LAUNCH = 'Error (launch failure):'
+ERROR_SCALING = 'Error (scaling error):'
+ERROR_SCALE_TIMEOUT = 'Error (scale timeout):'
+ERROR_MARATHON_TIMEOUT = 'Futures timed out:'
+ERROR_DEPLOYMENT = 'Error (deployment error):'
+
+FATAL_NOT_SCALING = 'Fatal (not scaling):'
+FATAL_CONSECUTIVE_LAUNCH = 'Fatal (consecutive launch):'
+FATAL_CONSECUTIVE_SCALING = 'Fatal (consecutive scaling)'
+FATAL_CONSECUTIVE_DEPLOYMENT = 'Fatal (consecutive deployment):'
+FATAL_CONSECUTIVE_UNDEPLOYMENT = 'Fatal (consecutive undeployment):'
+
+ERRORS = [ERROR_LAUNCH, ERROR_SCALING, ERROR_SCALE_TIMEOUT, ERROR_MARATHON_TIMEOUT,
+          ERROR_DEPLOYMENT, FATAL_CONSECUTIVE_LAUNCH, FATAL_NOT_SCALING,
+          FATAL_CONSECUTIVE_DEPLOYMENT, FATAL_CONSECUTIVE_UNDEPLOYMENT, FATAL_CONSECUTIVE_SCALING]
+
+SKIP_RESOURCES = 'Insufficient Resources'
+SKIP_PREVIOUS_TEST_FAILED = 'Previous Scale Test Failed'
+
 
 def app(id=1, instances=1):
     app_json = {
@@ -119,7 +140,7 @@ def count_test_app(test_obj):
         try:
             launch_apps(test_obj)
         except Exception as e:
-            launch_results.failed(str(e))
+            launch_results.failed(e)
             wait_for_marathon_up(test_obj)
         else:
             launch_results.completed()
@@ -132,9 +153,8 @@ def count_test_app(test_obj):
                 test_obj.deploy_results.failed("Unable to continue based on launch failure")
 
         except Exception as e:
-            msg = str(e)
             print(e)
-            test_obj.deploy_results.failed(msg)
+            test_obj.deploy_results.failed(e)
 
 
 def launch_apps(test_obj):
@@ -166,19 +186,27 @@ def launch_apps(test_obj):
                     raise Exception(abort_msg)
 
         except Exception as e:
-            test_obj.add_event('Error (launch failure): {}'.format(e))
+            log_error_event(test_obj, e, ERROR_LAUNCH)
 
             scale_failure_count = scale_failure_count + 1
 
             # 9 tries to see if scale increases, if no abort
             if scale_failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
-                abort_msg = 'Fatal (consecutive launch): Aborting based on too many failures: {}'.format(scale_failure_count)
-                test_obj.add_event(abort_msg)
+                abort_msg = 'Aborting based on too many failures: {}'.format(scale_failure_count)
+                log_error_event(test_obj, abort_msg, FATAL_CONSECUTIVE_DEPLOYMENT, True)
                 raise Exception(abort_msg)
             # need some time
             else:
                 time.sleep(calculate_scale_wait_time(test_obj, scale_failure_count))
                 quiet_wait_for_marathon_up(test_obj)
+
+
+def log_error_event(test_obj, message, message_type='', noisy=False):
+    full_message = '{} {}'.format(message_type, message)
+    if test_obj is not None:
+        test_obj.add_event(full_message)
+    if noisy:
+        print(full_message)
 
 
 def instance_test_app(test_obj):
@@ -211,8 +239,7 @@ def instance_test_app(test_obj):
             time_deployment2(test_obj)
         except Exception as e:
             print(e)
-            msg = str(e)
-            test_obj.deploy_results.failed(msg)
+            test_obj.deploy_results.failed(e)
 
 
 def group_test_app(test_obj):
@@ -235,7 +262,7 @@ def group_test_app(test_obj):
         except Exception as e:
             print(e)
             # service unavail == wait for marathon
-            launch_results.failed(str(e))
+            launch_results.failed(e)
             wait_for_marathon_up(test_obj)
         else:
             launch_results.completed()
@@ -246,8 +273,7 @@ def group_test_app(test_obj):
             time_deployment2(test_obj)
         except Exception as e:
             print(e)
-            msg = str(e)
-            test_obj.deploy_results.failed(msg)
+            test_obj.deploy_results.failed(e)
 
 
 def delete_all_apps_wait(test_obj=None, msg='undeployment failure'):
@@ -255,15 +281,12 @@ def delete_all_apps_wait(test_obj=None, msg='undeployment failure'):
     """
 
     if test_obj is not None and test_obj.deploy_results.current_scale > 0:
-        test_obj.add_event('undeploying {} tasks'.format(test_obj.deploy_results.current_scale))
+        test_obj.add_event('Undeploying {} tasks'.format(test_obj.deploy_results.current_scale))
 
     try:
         delete_all_apps()
     except Exception as e:
-        if test_obj is not None:
-            msg = '{}: {}'.format(msg, str(e))
-            test_obj.add_event(msg)
-        pass
+        log_error_event(test_obj, e, noisy=True)
 
     # some deletes (group test deletes commonly) timeout on remove_app
     # however it is a marathon internal issue on getting a timely response
@@ -271,10 +294,8 @@ def delete_all_apps_wait(test_obj=None, msg='undeployment failure'):
     try:
         undeployment_wait(test_obj)
     except Exception as e:
-        msg = '{}: {}'.format(msg, str(e))
-        if test_obj is not None:
-            test_obj.add_event(msg)
-        assert False, msg
+        log_error_event(test_obj, e, noisy=True)
+        assert False, e
 
 
 def undeployment_wait(test_obj=None):
@@ -295,7 +316,7 @@ def undeployment_wait(test_obj=None):
             failure_count += 1
             # consecutive failures great than x
             if failure_count > 10 and test_obj is not None:
-                test_obj.failed('Too many failures waiting for undeploy')
+                test_obj.failed('Too many failures waiting for undeploy', FATAL_CONSECUTIVE_UNDEPLOYMENT)
                 raise TestException()
 
             wait_for_marathon_up(test_obj)
@@ -333,15 +354,14 @@ def count_deployment(test_obj, step_target):
             scale_failure_count = 0
         except DCOSScaleException as e:
             # current scale is lower than previous scale
-            print(e)
-            msg = str(e)
-            deploy_results.failed(msg)
+            log_error_event(test_obj, e, ERROR_SCALING)
             scale_failure_count = scale_failure_count + 1
 
-            # 5 tries to see if scale increases, if no abort
-            # 5 consecutive failures
-            if scale_failure_count > 10:
-                deploy_results.failed('Aborting based on too many failures: {}'.format(scale_failure_count))
+            # consecutive failures
+            if scale_failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
+                deploy_results.failed(
+                    'Aborting based on too many failures: {}'.format(scale_failure_count),
+                    FATAL_CONSECUTIVE_SCALING)
                 abort = True
             # need some time
             else:
@@ -349,22 +369,17 @@ def count_deployment(test_obj, step_target):
                 quiet_wait_for_marathon_up(test_obj)
 
         except DCOSNotScalingException as e:
-            print(e)
-            msg = "Fatal (not scaling): {}".format(e)
-            deploy_results.failed(msg)
+            deploy_results.failed(e, FATAL_NOT_SCALING)
             abort = True
 
         except Exception as e:
-            msg = "Error (deployment error): {}".format(e)
-            test_obj.add_event(msg)
+            log_error_event(test_obj, e, ERROR_DEPLOYMENT)
             failure_count = failure_count + 1
 
             # consecutive failures > x will fail test
             if failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
                 message = 'Too many failures query for deployments'
-                print(e)
-                print(message)
-                deploy_results.failed(message)
+                deploy_results.failed(message, FATAL_CONSECUTIVE_DEPLOYMENT)
                 raise TestException(message)
 
             time.sleep(calculate_deployment_wait_time(test_obj, failure_count))
@@ -409,15 +424,13 @@ def time_deployment2(test_obj):
             scale_failure_count = 0
         except DCOSScaleException as e:
             # current scale is lower than previous scale
-            print(e)
-            msg = "Error (scaling error): {}".format(e)
-            test_obj.add_event(msg)
+            log_error_event(test_obj, e, ERROR_SCALING, True)
             scale_failure_count = scale_failure_count + 1
 
-            # 5 tries to see if scale increases, if no abort
-            # 5 consecutive failures
-            if scale_failure_count > 5:
-                deploy_results.failed('Aborting based on too many failures: {}'.format(scale_failure_count))
+            if scale_failure_count > MAX_CONSECUTIVE_SCALE_FAILS:
+                deploy_results.failed(
+                    'Aborting based on too many failures: {}'.format(scale_failure_count),
+                    FATAL_CONSECUTIVE_SCALING)
                 abort = True
             # need some time
             else:
@@ -425,22 +438,18 @@ def time_deployment2(test_obj):
                 quiet_wait_for_marathon_up(test_obj)
 
         except DCOSNotScalingException as e:
-            print(e)
-            msg = "Fatal (not scaling): {}".format(e)
-            deploy_results.failed(msg)
+            deploy_results.failed(e, FATAL_NOT_SCALING)
             abort = True
 
         except Exception as e:
-            msg = "Error (deployment error): {}".format(e)
-            test_obj.add_event(msg)
+            log_error_event(test_obj, e, ERROR_DEPLOYMENT)
             failure_count = failure_count + 1
 
             # consecutive failures > x will fail test
             if failure_count > 10:
                 message = 'Too many failures query for deployments'
                 print(e)
-                print(message)
-                deploy_results.failed(message)
+                deploy_results.failed(message, FATAL_CONSECUTIVE_LAUNCH)
                 raise TestException(message)
 
             time.sleep(calculate_deployment_wait_time(test_obj, failure_count))
@@ -465,7 +474,7 @@ def abort_deployment_check(test_obj):
     """
 
     if elapse_time(test_obj.start) > timedelta(hours=MAX_HOURS_OF_TEST).total_seconds():
-        test_obj.add_event("Error (scale timeout): Test taking longer than {} hours".format(hours))
+        log_error_event(test_obj, 'Test taking longer than {} hours'.format(hours), ERROR_SCALE_TIMEOUT)
         return True
 
     return False
@@ -726,10 +735,10 @@ class LaunchResults(object):
         self.current_response_time(time.time())
         self.current_test.add_event('launch successful')
 
-    def failed(self, message=''):
+    def failed(self, message='', failure_type=ERROR_LAUNCH):
         self.success = False
         self.current_response_time(time.time())
-        self.current_test.add_event('Error (launch failure): {}'.format(message))
+        self.current_test.add_event('{} {}'.format(failure_type, message))
 
 
 class DeployResults(object):
@@ -798,15 +807,15 @@ class DeployResults(object):
         self.success = True
         self.current_test.successful()
         self.current_response_time(time.time())
-        self.current_test.add_event('deployment successful')
-        self.current_test.add_event('scale reached: {}'.format(self.current_scale))
+        self.current_test.add_event('Deployment successful')
+        self.current_test.add_event('Scale reached: {}'.format(self.current_scale))
 
-    def failed(self, message=''):
+    def failed(self, message='', failure_type=ERROR_DEPLOYMENT):
         self.current_test.failed(message)
         self.success = False
         self.current_response_time(time.time())
-        self.current_test.add_event('Error (deployment failure): {}'.format(message))
-        self.current_test.add_event('scale reached: {}'.format(self.current_scale))
+        self.current_test.add_event('Scale reached: {}'.format(self.current_scale))
+        self.current_test.add_event('{} {}'.format(failure_type, message))
 
 
 class UnDeployResults(object):
@@ -888,7 +897,7 @@ class ScaleTest(object):
             len(self.events))
 
     def add_event(self, eventInfo):
-        self.events.append('    event: {} (time in test: {})'.format(eventInfo, pretty_duration_safe(elapse_time(self.start))))
+        self.events.append('{} {} (time in test: {})'.format(EVENT_HEADER, eventInfo, pretty_duration_safe(elapse_time(self.start))))
 
     def _status(self, status):
         """ end of scale test, however still may have events like undeploy_time
@@ -912,7 +921,7 @@ class ScaleTest(object):
         self.skipped = True
 
     def undeploy_complete(self, start):
-        self.add_event('undeployment complete')
+        self.add_event('Undeployment complete')
         self.undeploy_time = elapse_time(start)
 
     def start_test(self):

@@ -94,10 +94,10 @@ def initalize_test(marathon_name='root', under_test='apps', style='instances', n
 
     # if need >= (private_resources_available()):
     if not has_enough_resources(need):
-        current_test.skip('insufficient resources')
+        current_test.skip(SKIP_RESOURCES)
 
     if previous_style_test_failed(current_test):
-        current_test.skip('smaller scale failed')
+        current_test.skip(SKIP_PREVIOUS_TEST_FAILED)
 
     if current_test.skipped:
         pytest.skip()
@@ -174,28 +174,22 @@ def collect_stats():
         stats.get(key).append(pass_status(scale_test, scale_test.deploy_results.success))
 
         key = get_test_key(scale_test, 'errors')
-        stats.get(key).append(total_errors(scale_test))
+        stats.get(key).append(total_errors(scale_test.events))
 
     return stats
 
 
-def total_errors(scale_test):
-    errors = 0
-    for event in scale_test.events:
-        if is_error(event):
-            errors += 1
-
-    return errors
+def total_errors(events):
+    error_events = [event for event in events if is_error(event)]
+    return len(error_events)
 
 
 def is_error(event):
-    return ('Error (launch failure):' in event or
-            'Error (deployment error):' in event or
-            'Fatal (consecutive launch):' in event or
-            'Fatal (not scaling):' in event or
-            'Error (scaling error):' in event or
-            'Error (scale timeout):' in event or
-            'Futures timed out' in event)
+    # strip 'event: header'
+    message = event[len(EVENT_HEADER) + 1:]
+    # take the event message if any
+    event_header = message[:message.find(':') + 1]
+    return event_header in ERRORS
 
 
 def pass_status(test, successful):
