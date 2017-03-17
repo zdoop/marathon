@@ -18,7 +18,7 @@ node('shakedown-scale') {
     }
 
     stage('Installing Dependencies') {
-      sh "pip3 install numpy matplotlib click"
+      sh "pip3 install retrying click"
     }
 
     stage('Configure DCOS Cluster') {
