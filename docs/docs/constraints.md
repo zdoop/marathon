@@ -65,7 +65,7 @@ $ curl -X POST -H "Content-type: application/json" localhost:8080/v2/apps -d '{
   }'
 ```
 
-You can also use this attribute to tie an app to a specific node by using the hostname property:
+You can also tie an app to a specific node by using the `hostname` field:
 
 ``` bash
 $ curl -X POST -H "Content-type: application/json" localhost:8080/v2/apps -d '{
