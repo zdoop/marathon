@@ -13,6 +13,7 @@ uses:
   number: numberTypes.raml
   readiness: readinessCheck.raml
   secrets: secrets.raml
+  deprecatedSecrets: deprecatedSecrets.raml
   strings: stringTypes.raml
   versionInfo: versionInfo.raml
   pragma: pragma.raml
@@ -275,7 +276,7 @@ types:
           associated tasks only on hosts that have the specified ports available.
         default: false
       secrets?:
-        type: secrets.Secrets
+        type: deprecatedSecrets.Secrets
         (pragma.omitEmpty):
       taskKillGracePeriodSeconds?:
         type: integer
