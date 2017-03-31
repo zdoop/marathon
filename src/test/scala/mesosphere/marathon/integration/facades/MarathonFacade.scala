@@ -142,13 +142,16 @@ class MarathonFacade(
     * Connects to the Marathon SSE endpoint. Future completes when the http connection is established. Events are
     * streamed via the materializable-once Source.
     */
-  def events(): Future[Source[ITEvent, NotUsed]] = {
+  def events(eventsType: String*): Future[Source[ITEvent, NotUsed]] = {
 
     import EventUnmarshalling.fromEventStream
     val mapper = new ObjectMapper() with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
 
-    Http().singleRequest(Get(s"$url/v2/events").withHeaders(Accept(MediaType.text("event-stream"))))
+    val eventsFilter = Uri.Query(eventsType.map(eventType => "event_type" -> eventType): _*)
+
+    Http().singleRequest(Get(Uri(s"$url/v2/events").withQuery(eventsFilter))
+      .withHeaders(Accept(MediaType.text("event-stream"))))
       .flatMap { response =>
         AkkaUnmarshal(response).to[Source[ServerSentEvent, NotUsed]]
       }
