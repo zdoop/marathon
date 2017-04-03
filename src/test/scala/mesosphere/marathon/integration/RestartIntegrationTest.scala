@@ -47,7 +47,7 @@ class RestartIntegrationTest extends AkkaIntegrationTest with MesosClusterTest w
         server.restart().futureValue
         val tasksAfterFirstAbdication = f.waitForTasks(app.id.toPath, 1)
         Then("the already running task should not be killed")
-        tasksBeforeAbdication should be(tasksAfterFirstAbdication)
+        tasksBeforeAbdication should be(tasksAfterFirstAbdication) withClue (s"Tasks before (${tasksBeforeAbdication}) and after (${tasksAfterFirstAbdication}) abdication are different")
       }
     }
 
@@ -96,10 +96,10 @@ class RestartIntegrationTest extends AkkaIntegrationTest with MesosClusterTest w
 
   private def testDeployments(server: LocalMarathon, f: MarathonTest, appId: PathId, createApp: raml.App, updateApp: raml.AppUpdate): Unit = {
     Given("a new simple app with 2 instances")
-    createApp.instances shouldBe 2
+    createApp.instances shouldBe 2 withClue (s"There are ${createApp.instances} running instead of 2")
 
     val created = f.marathon.createAppV2(createApp)
-    created.code should be (201)
+    created.code should be (201) withClue (s"Response ${created.code}: ${created.entityString}")
     f.waitForDeployment(created)
 
     logger.debug(s"Started app: ${f.marathon.app(appId).entityPrettyJsonString}")
@@ -113,7 +113,7 @@ class RestartIntegrationTest extends AkkaIntegrationTest with MesosClusterTest w
     val newVersion = appV2.value.version.toString
     val updatedTasks = updated.filter(_.version.contains(newVersion))
     val updatedTaskIds: List[String] = updatedTasks.map(_.id)
-    updatedTaskIds should have size 2
+    updatedTaskIds should have size 2 withClue (s"Update ${updatedTaskIds.size} instead of 2")
 
     logger.debug(s"Updated app: ${f.marathon.app(appId).entityPrettyJsonString}")
 
