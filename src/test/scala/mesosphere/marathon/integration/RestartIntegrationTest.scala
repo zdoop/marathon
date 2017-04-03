@@ -96,7 +96,7 @@ class RestartIntegrationTest extends AkkaIntegrationTest with MesosClusterTest w
 
   private def testDeployments(server: LocalMarathon, f: MarathonTest, appId: PathId, createApp: raml.App, updateApp: raml.AppUpdate): Unit = {
     Given("a new simple app with 2 instances")
-    createApp.instances shouldBe 2 withClue (s"There are ${createApp.instances} running instead of 2")
+    createApp.instances shouldBe 2 withClue (s"There are ${createApp.instances} running instead of 2 for ${appId}")
 
     val created = f.marathon.createAppV2(createApp)
     created.code should be (201) withClue (s"Response ${created.code}: ${created.entityString}")
@@ -113,7 +113,7 @@ class RestartIntegrationTest extends AkkaIntegrationTest with MesosClusterTest w
     val newVersion = appV2.value.version.toString
     val updatedTasks = updated.filter(_.version.contains(newVersion))
     val updatedTaskIds: List[String] = updatedTasks.map(_.id)
-    updatedTaskIds should have size 2 withClue (s"Update ${updatedTaskIds.size} instead of 2")
+    updatedTaskIds should have size 2 withClue (s"Update ${updatedTaskIds.size} instead of 2 for ${appId}")
 
     logger.debug(s"Updated app: ${f.marathon.app(appId).entityPrettyJsonString}")
 
