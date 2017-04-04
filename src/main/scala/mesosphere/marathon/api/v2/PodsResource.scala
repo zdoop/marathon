@@ -49,22 +49,7 @@ class PodsResource @Inject() (
 
   // If we change/add/upgrade the notion of a Pod and can't do it purely in the internal model,
   // update the json first
-  private def normalize(pod: Pod): Pod = {
-    if (pod.networks.exists(_.name.isEmpty)) {
-      val networks = pod.networks.map { network =>
-        if (network.mode == NetworkMode.Container && network.name.isEmpty) {
-          config.defaultNetworkName.get.fold(network) { name =>
-            network.copy(name = Some(name))
-          }
-        } else {
-          network
-        }
-      }
-      pod.copy(networks = networks)
-    } else {
-      pod
-    }
-  }
+  private def normalize(pod: Pod): Pod = PodsResource.normalize(pod, config)
 
   // If we can normalize using the internal model, do that instead.
   // The version of the pod is changed here to make sure, the user has not send a version.
@@ -301,4 +286,24 @@ object PodsResource {
   def authzSelector(implicit authz: Authorizer, identity: Identity): PodSelector = Selector[PodDefinition] { pod =>
     authz.isAuthorized(identity, ViewRunSpec, pod)
   }
+
+  // If we change/add/upgrade the notion of a Pod and can't do it purely in the internal model,
+  // update the json first
+  def normalize(pod: Pod, marathonConfig: MarathonConf): Pod = {
+    if (pod.networks.exists(_.name.isEmpty)) {
+      val networks = pod.networks.map { network =>
+        if (network.mode == NetworkMode.Container && network.name.isEmpty) {
+          marathonConfig.defaultNetworkName.get.fold(network) { name =>
+            network.copy(name = Some(name))
+          }
+        } else {
+          network
+        }
+      }
+      pod.copy(networks = networks)
+    } else {
+      pod
+    }
+  }
+
 }

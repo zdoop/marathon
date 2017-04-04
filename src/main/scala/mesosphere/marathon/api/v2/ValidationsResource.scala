@@ -12,9 +12,11 @@ import mesosphere.marathon.api.v2.AppsResource.NormalizationConfig
 import mesosphere.marathon.api.v2.Validation.validateOrThrow
 import mesosphere.marathon.core.async.ExecutionContexts
 import mesosphere.marathon.core.base.Clock
+import mesosphere.marathon.core.event.{ Events, PodEvent }
 import mesosphere.marathon.core.plugin.PluginManager
+import mesosphere.marathon.core.pod.PodDefinition
 import mesosphere.marathon.plugin.auth._
-import mesosphere.marathon.raml.Raml
+import mesosphere.marathon.raml.{ Pod, Raml }
 import mesosphere.marathon.state.{ AppDefinition, VersionInfo }
 import org.slf4j.LoggerFactory
 import play.api.libs.json.Json
@@ -37,12 +39,12 @@ class ValidationsResource @Inject() (
     AppsResource.appNormalization(NormalizationConfig(config.availableFeatures, normalizationConfig))(AppNormalization.withCanonizedIds())
 
   @POST
-  def create(
+  def validateApp(
     body: Array[Byte],
     @Context req: HttpServletRequest): Response = authenticated(req) { implicit identity =>
 
     assumeValid {
-      val rawApp = Raml.fromRaml(normalize(Json.parse(body).as[raml.App]))
+      val rawApp = Raml.fromRaml(normalizeApp(Json.parse(body).as[raml.App]))
       val now = clock.now()
       val app = validateOrThrow(rawApp).copy(versionInfo = VersionInfo.OnlyVersion(now))
 
@@ -54,5 +56,26 @@ class ValidationsResource @Inject() (
     }
   }
 
-  def normalize(app: raml.App): raml.App = validateAndNormalizeApp.normalized(app)
+  @POST
+  def validatePod(
+    body: Array[Byte],
+    @Context req: HttpServletRequest): Response = {
+    authenticated(req) { implicit identity =>
+      withValid(normalizePod(Json.parse(body).as[Pod])) { podDef =>
+        val pod = normalizePod(Raml.fromRaml(normalizePod(podDef)))
+        withAuthorization(CreateRunSpec, pod) {
+
+          Response
+            .ok(new URI(pod.id.toString))
+            .build()
+        }
+      }
+    }
+  }
+
+  private def normalizeApp(app: raml.App): raml.App = validateAndNormalizeApp.normalized(app)
+
+  private def normalizePod(pod: raml.Pod): raml.Pod = PodsResource.normalize(pod, config)
+
+  private def normalizePod(pod: PodDefinition): PodDefinition = pod.copy(version = clock.now())
 }
