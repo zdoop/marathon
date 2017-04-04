@@ -14,7 +14,7 @@ import mesosphere.marathon.core.plugin.PluginManager
 import mesosphere.marathon.core.pod.{ HostNetwork, Network }
 import mesosphere.marathon.core.readiness.ReadinessCheck
 import mesosphere.marathon.plugin.validation.RunSpecValidator
-import mesosphere.marathon.raml.{ App, Apps, Resources }
+import mesosphere.marathon.raml.{ App, Apps, Resources, SecretSpec }
 import mesosphere.marathon.state.Container.{ Docker, MesosAppC, MesosDocker }
 import mesosphere.marathon.state.VersionInfo._
 import mesosphere.marathon.stream.Implicits._
@@ -75,6 +75,8 @@ case class AppDefinition(
   override val residency: Option[Residency] = AppDefinition.DefaultResidency,
 
   secrets: Map[String, Secret] = AppDefinition.DefaultSecrets,
+
+  secretSpecs: Seq[SecretSpec] = AppDefinition.DefaultSecretSpecs,
 
   override val unreachableStrategy: UnreachableStrategy = AppDefinition.DefaultUnreachableStrategy,
 
@@ -386,6 +388,8 @@ object AppDefinition extends GeneralPurposeCombinators {
   val DefaultUpgradeStrategy: UpgradeStrategy = UpgradeStrategy.empty
 
   val DefaultSecrets = Map.empty[String, Secret]
+
+  val DefaultSecretSpecs = Seq.empty[SecretSpec]
 
   val DefaultUnreachableStrategy = UnreachableStrategy.default(resident = false)
 

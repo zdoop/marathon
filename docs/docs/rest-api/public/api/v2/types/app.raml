@@ -278,6 +278,11 @@ types:
       secrets?:
         type: deprecatedSecrets.Secrets
         (pragma.omitEmpty):
+        (pragma.deprecated): Deprecated since 1.5. Use secretSpecs instead.
+      secretSpecs?:
+        type: secrets.SecretSpec[]
+        (pragma.omitEmpty):
+        description: Secrets that shall be rendered into the app.
       taskKillGracePeriodSeconds?:
         type: integer
         format: int32

@@ -3,7 +3,7 @@ package state
 
 import mesosphere.marathon.Protos.Constraint
 import mesosphere.marathon.core.pod.Network
-import mesosphere.marathon.raml.Resources
+import mesosphere.marathon.raml.{ Resources, SecretSpec }
 
 import scala.concurrent.duration._
 
@@ -37,6 +37,7 @@ trait RunSpec extends plugin.RunSpec {
   val labels: Map[String, String]
   val acceptedResourceRoles: Set[String]
   val secrets: Map[String, Secret]
+  val secretSpecs: Seq[SecretSpec]
   val instances: Int
   val constraints: Set[Constraint]
   val version: Timestamp

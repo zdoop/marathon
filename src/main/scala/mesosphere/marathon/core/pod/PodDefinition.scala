@@ -3,7 +3,7 @@ package core.pod
 
 // scalastyle:off
 import mesosphere.marathon.core.task.Task
-import mesosphere.marathon.raml.{ Endpoint, ExecutorResources, Pod, Raml, Resources }
+import mesosphere.marathon.raml.{ Endpoint, ExecutorResources, Pod, Raml, Resources, SecretSpec }
 import mesosphere.marathon.state._
 import play.api.libs.json.Json
 
@@ -20,6 +20,7 @@ case class PodDefinition(
     labels: Map[String, String] = PodDefinition.DefaultLabels,
     acceptedResourceRoles: Set[String] = PodDefinition.DefaultResourceRoles,
     secrets: Map[String, Secret] = PodDefinition.DefaultSecrets,
+    secretSpecs: Seq[SecretSpec] = PodDefinition.DefaultSecretSpecs,
     containers: Seq[MesosContainer] = PodDefinition.DefaultContainers,
     instances: Int = PodDefinition.DefaultInstances,
     constraints: Set[Protos.Constraint] = PodDefinition.DefaultConstraints,
@@ -109,6 +110,7 @@ object PodDefinition {
   val DefaultLabels = Map.empty[String, String]
   val DefaultResourceRoles = Set.empty[String]
   val DefaultSecrets = Map.empty[String, Secret]
+  val DefaultSecretSpecs = Seq.empty[SecretSpec]
   val DefaultContainers = Seq.empty[MesosContainer]
   val DefaultInstances = 1
   val DefaultConstraints = Set.empty[Protos.Constraint]
