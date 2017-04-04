@@ -70,6 +70,7 @@ class MarathonRestModule extends ServletModule {
     bind(classOf[v2.ArtifactsResource]).in(Scopes.SINGLETON)
     bind(classOf[v2.SchemaResource]).in(Scopes.SINGLETON)
     bind(classOf[v2.PluginsResource]).in(Scopes.SINGLETON)
+    bind(classOf[v2.ValidationsResource]).in(Scopes.SINGLETON)
 
     install(new LeaderProxyFilterModule)
 
