@@ -425,6 +425,11 @@ class MarathonFacade(
     result(pipeline(Get(s"$url/metrics")), waitTime)
   }
 
+  def ping(): RestResult[HttpResponse] = {
+    val pipeline = marathonSendReceive ~> responseResult
+    result(pipeline(Get(s"$url/ping")), waitTime)
+  }
+
   //artifacts ---------------------------------------------
   def uploadArtifact(path: String, file: File): RestResult[HttpResponse] = {
     val pipeline = marathonSendReceive ~> responseResult
