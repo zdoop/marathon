@@ -7,17 +7,19 @@ import javax.servlet.http.HttpServletRequest
 import javax.ws.rs._
 import javax.ws.rs.core.{ Context, Response }
 
+import com.wix.accord.Validator
 import mesosphere.marathon.api._
 import mesosphere.marathon.api.v2.AppsResource.NormalizationConfig
 import mesosphere.marathon.api.v2.Validation.validateOrThrow
+import mesosphere.marathon.api.v2.validation.PodsValidation
 import mesosphere.marathon.core.async.ExecutionContexts
 import mesosphere.marathon.core.base.Clock
-import mesosphere.marathon.core.event.{ Events, PodEvent }
 import mesosphere.marathon.core.plugin.PluginManager
 import mesosphere.marathon.core.pod.PodDefinition
 import mesosphere.marathon.plugin.auth._
 import mesosphere.marathon.raml.{ Pod, Raml }
 import mesosphere.marathon.state.{ AppDefinition, VersionInfo }
+import mesosphere.marathon.util.SemanticVersion
 import org.slf4j.LoggerFactory
 import play.api.libs.json.Json
 
@@ -37,6 +39,11 @@ class ValidationsResource @Inject() (
 
   private implicit val validateAndNormalizeApp: Normalization[raml.App] =
     AppsResource.appNormalization(NormalizationConfig(config.availableFeatures, normalizationConfig))(AppNormalization.withCanonizedIds())
+
+  implicit def podDefValidator: Validator[Pod] =
+    PodsValidation.podDefValidator(
+      config.availableFeatures,
+      SemanticVersion(0, 0, 0))
 
   @POST
   def validateApp(
