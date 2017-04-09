@@ -890,7 +890,7 @@ object RamlTypeGenerator {
                   CASE(TUPLE(REF("o"), WILDCARD)) ==>
                     (((REF("regex") DOT "unapplySeq") APPLY REF("o")) DOT "map" APPLY(
                       LAMBDA(PARAM(WILDCARD)) ==> (PlayJsSuccess APPLY REF("o"))
-                    )) DOT "getOrElse" APPLY (PlayJsError APPLY(PlayPath DOT "\\" APPLY(REF("o")), REF("error")))
+                    )) DOT "getOrElse" APPLY (PlayJsError APPLY(PlayPath DOT "\\" APPLY(REF("o")), PlayValidationError APPLY(REF("error"), REF("regex") DOT "regex")))
                 ))) DOT "collect" APPLY(BLOCK(
                   CASE(ID("err") withType(PlayJsError)) ==> REF("err")
                 )),
