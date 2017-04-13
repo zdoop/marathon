@@ -184,6 +184,23 @@ class AppsResourceTest extends AkkaUnitTest with GroupCreation {
       response.getMetadata.containsKey(RestResource.DeploymentHeader) should be(true)
     }
 
+    "Add app with unknown json properties" in new Fixture {
+      Given("An app")
+      val body =
+        """{
+          |  "id": "/test",
+          |  "cmd": "sleep 10",
+          |  "foo" : "bar"
+          |}""".stripMargin.getBytes("UTF-8")
+      val app = App(id = "/test", cmd = Some("sleep 10"))
+      prepareApp(app, groupManager)
+
+      val response = appsResource.create(body, force = false, auth.request)
+
+      Then("It is successful")
+      response.getStatus should be(201)
+    }
+
     "Create a new app with IP/CT, no default network name, Alice does not specify a network" in new Fixture {
       Given("An app and group")
       val app = App(

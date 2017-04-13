@@ -18,7 +18,7 @@ import mesosphere.marathon.plugin.auth._
 import mesosphere.marathon.raml.{ Pod, Raml }
 import mesosphere.marathon.state.{ AppDefinition, VersionInfo }
 import mesosphere.marathon.util.SemanticVersion
-import play.api.libs.json.Json
+import play.api.libs.json.{ JsError, JsResultException, JsSuccess, Json }
 
 @Path("v2/validations")
 class ValidationsResource @Inject() (
@@ -51,7 +51,11 @@ class ValidationsResource @Inject() (
     @Context req: HttpServletRequest): Response = authenticated(req) { implicit identity =>
 
     assumeValid {
-      val rawApp = Raml.fromRaml(normalizeApp(Json.parse(body).as[raml.App]))
+      val deserializedApp = raml.App.playJsonFormat.reads(Json.parse(body), strict = true)
+      val rawApp: AppDefinition = deserializedApp match {
+        case success: JsSuccess[raml.App] => Raml.fromRaml(normalizeApp(success.get))
+        case error: JsError => throw JsResultException(error.errors)
+      }
       val now = clock.now()
       val app = validateOrThrow(rawApp).copy(versionInfo = VersionInfo.OnlyVersion(now))
       checkAuthorization(CreateRunSpec, app)
@@ -67,7 +71,12 @@ class ValidationsResource @Inject() (
     body: Array[Byte],
     @Context req: HttpServletRequest): Response = {
     authenticated(req) { implicit identity =>
-      withValid(normalizePod(Json.parse(body).as[Pod])) { podDef =>
+      val deserializedPod = raml.Pod.playJsonFormat.reads(Json.parse(body), strict = true)
+      val rawPod: Pod = deserializedPod match {
+        case success: JsSuccess[raml.Pod] => normalizePod(success.value)
+        case error: JsError => throw JsResultException(error.errors)
+      }
+      withValid(rawPod) { podDef =>
         val pod = normalizePod(Raml.fromRaml(normalizePod(podDef)))
         withAuthorization(CreateRunSpec, pod) {
 

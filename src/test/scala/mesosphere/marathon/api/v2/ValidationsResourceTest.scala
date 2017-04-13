@@ -94,7 +94,7 @@ class ValidationsResourceTest extends AkkaUnitTest with GroupCreation {
       error._2.head should be(ValidationError("error.minLength", 1))
     }
 
-    "validate a app with unknown propertues" in new Fixture {
+    "validate a app with unknown properties" in new Fixture {
       Given("app definition")
 
       val body =
@@ -110,8 +110,8 @@ class ValidationsResourceTest extends AkkaUnitTest with GroupCreation {
       result.getStatus shouldEqual 422
 
       val json = Json.parse(result.getEntity.toString)
-      (json \ "message") should be(JsDefined(JsString("Object is not valid")))
-      (json \ "details" \ 0 \ "path") should be(JsDefined(JsString("/")))
+      (json \ "message") should be(JsDefined(JsString("Invalid JSON")))
+      (json \ "details" \ 0 \ "path") should be(JsDefined(JsString("/foo")))
     }
   }
 }

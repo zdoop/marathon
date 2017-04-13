@@ -428,7 +428,8 @@ object RamlTypeGenerator {
         actualFields.find(_.constraints.nonEmpty).map(_ => Seq(IMPORT(PlayReads DOT "_"))).getOrElse(Nil) ++
         actualFields.find(_.constraints.size > 1).map(_ => Seq(IMPORT("play.api.libs.functional.syntax._"))).getOrElse(Nil) ++ Seq(
           OBJECTDEF("playJsonFormat") withParents PLAY_JSON_FORMAT(name) withFlags Flags.IMPLICIT := BLOCK(
-            DEF("reads", PLAY_JSON_RESULT(name)) withParams PARAM("json", PlayJsValue) := BLOCK(
+            DEF("reads", PLAY_JSON_RESULT(name)) withParams PARAM("json", PlayJsValue) := REF("reads") APPLY (REF("json"), FALSE),
+            DEF("reads", PLAY_JSON_RESULT(name)) withParams Seq(PARAM("json", PlayJsValue).tree, (PARAM("strict", BooleanClass)).tree) := BLOCK(
               actualFields.map { field =>
                 VAL(field.name) := field.playValidator
               } ++ Seq(
@@ -440,9 +441,11 @@ object RamlTypeGenerator {
                 VAL("ramlIds") := REF("ramlFields") DOT "map" APPLY REF("_._1"),
                 VAL("_errors") := REF("ramlFields") DOT "collect" APPLY BLOCK(
                   CASE(REF(s"(field, e:$PlayJsError)")) ==> (REF("e") DOT "repath" APPLY(REF(PlayPath) DOT "\\" APPLY REF("field"))) DOT s"asInstanceOf[$PlayJsError]")
-                    DOT "++" APPLY (REF("jsonFields") DOT "filterNot" APPLY(REF("ramlIds") DOT "contains") DOT "map" APPLY (REF("a => ")  APPLY
-                    (REF(PlayJsError) APPLY (REF(PlayPath) DOT "\\" APPLY REF("a"), REF(PlayValidationError) APPLY(LIT("error.unknown.property"))))
-                    )),
+                    DOT "++" APPLY(
+                      IF(REF("strict")) THEN (
+                        (REF("jsonFields") DOT "filterNot" APPLY(REF("ramlIds") DOT "contains") DOT "map" APPLY (REF("a => ")  APPLY
+                        (REF(PlayJsError) APPLY (REF(PlayPath) DOT "\\" APPLY REF("a"), REF(PlayValidationError) APPLY(LIT("error.unknown.property"))))
+                        ))) ELSE SEQ()),
                 IF(REF("_errors") DOT "nonEmpty") THEN (
                   REF("_errors") DOT "reduceOption" APPLYTYPE PlayJsError APPLY (REF("_") DOT "++" APPLY REF("_")) DOT "getOrElse" APPLY (REF("_errors") DOT "head")
                   ) ELSE (
