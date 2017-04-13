@@ -11,6 +11,9 @@ import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq
 
+/**
+  * Attention: This class is only re-compiled during `sbt reload`
+  */
 // scalastyle:off
 object RamlTypeGenerator {
   val AdditionalProperties = "additionalProperties"
@@ -429,8 +432,17 @@ object RamlTypeGenerator {
               actualFields.map { field =>
                 VAL(field.name) := field.playValidator
               } ++ Seq(
-                VAL("_errors") := SEQ(actualFields.map(f => TUPLE(LIT(f.name), REF(f.name)))) DOT "collect" APPLY BLOCK(
-                  CASE(REF(s"(field, e:$PlayJsError)")) ==> (REF("e") DOT "repath" APPLY(REF(PlayPath) DOT "\\" APPLY REF("field"))) DOT s"asInstanceOf[$PlayJsError]"),
+                VAL("jsonFields") withType ("Seq[String]") := REF("json") MATCH(
+                    CASE(ID("obj") withType (PlayJsObject)) ==> (REF("obj") DOT "value" DOT "keys" DOT "toSeq"),
+                    CASE(ID("obj")) ==> REF("Seq.empty[String]")
+                ),
+                VAL("ramlFields") := SEQ(actualFields.map(f => TUPLE(LIT(f.name), REF(f.name)))),
+                VAL("ramlIds") := REF("ramlFields") DOT "map" APPLY REF("_._1"),
+                VAL("_errors") := REF("ramlFields") DOT "collect" APPLY BLOCK(
+                  CASE(REF(s"(field, e:$PlayJsError)")) ==> (REF("e") DOT "repath" APPLY(REF(PlayPath) DOT "\\" APPLY REF("field"))) DOT s"asInstanceOf[$PlayJsError]")
+                    DOT "++" APPLY (REF("jsonFields") DOT "filterNot" APPLY(REF("ramlIds") DOT "contains") DOT "map" APPLY (REF("a => ")  APPLY
+                    (REF(PlayJsError) APPLY (REF(PlayPath) DOT "\\" APPLY REF("a"), REF(PlayValidationError) APPLY(LIT("error.unknown.property"))))
+                    )),
                 IF(REF("_errors") DOT "nonEmpty") THEN (
                   REF("_errors") DOT "reduceOption" APPLYTYPE PlayJsError APPLY (REF("_") DOT "++" APPLY REF("_")) DOT "getOrElse" APPLY (REF("_errors") DOT "head")
                   ) ELSE (
@@ -450,7 +462,7 @@ object RamlTypeGenerator {
                     PlayJsNull
                     )
                 } else if(field.omitEmpty && !field.repeated && !builtInTypes.contains(field.`type`.toString())) {
-                  // earlier "require" check ensures that we won't see a field w/ omitEmpty that is not optional.
+                  // earlier "require" check ensures that we won't see a flield w/ omitEmpty that is not optional.
                   // see buildTypes
                   VAL(field.name) := serialized MATCH(
                     // avoid serializing JS objects w/o any fields

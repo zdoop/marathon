@@ -93,5 +93,25 @@ class ValidationsResourceTest extends AkkaUnitTest with GroupCreation {
       error._1 should be(JsPath(List(KeyPathNode("containers"))))
       error._2.head should be(ValidationError("error.minLength", 1))
     }
+
+    "validate a app with unknown propertues" in new Fixture {
+      Given("app definition")
+
+      val body =
+        """{
+          |  "id": "/test",
+          |  "cmd": "sleep 10",
+          |  "foo" : "bar"
+          |}""".stripMargin.getBytes("UTF-8")
+
+      val result = validationsResource.validateApp(body, auth.request)
+
+      Then("http result is 422 and correct error")
+      result.getStatus shouldEqual 422
+
+      val json = Json.parse(result.getEntity.toString)
+      (json \ "message") should be(JsDefined(JsString("Object is not valid")))
+      (json \ "details" \ 0 \ "path") should be(JsDefined(JsString("/")))
+    }
   }
 }
