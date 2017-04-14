@@ -13,6 +13,7 @@ import os
 from dcos_service_marathon_tests import *
 from marathon_common_tests import *
 from marathon_pods_tests import *
+from shakedown import (masters, required_masters)
 
 pytestmark = [pytest.mark.usefixtures('marathon_clean')]
 
@@ -36,6 +37,25 @@ def teardown_module(module):
 ##################
 # Root specific tests
 ##################
+
+
+@masters(3)
+def test_marathon_delete_leader():
+    marathon_service_name = get_marathon_service_name()
+
+    original_leader = common.get_marathon_leader()
+    print('leader: {}'.format(original_leader))
+    common.delete_marathon_url('v2/leader')
+
+    common.wait_for_marathon_up()
+
+    @retrying.retry(stop_max_attempt_number=30)
+    def marathon_leadership_changed():
+        current_leader = common.get_marathon_leader()
+        print('leader: {}'.format(current_leader))
+        assert original_leader != current_leader
+
+    marathon_leadership_changed()
 
 
 def test_external_volume():

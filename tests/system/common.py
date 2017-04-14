@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import uuid
 import random
+import retrying
 import pytest
 
 
@@ -991,6 +992,37 @@ def delete_marathon_url(name):
     url = marathon_url(name)
     return http.delete(url)
 
+
+def wait_for_marathon_up(require_count=4, noisy=True):
+    """
+        need to investigate what we can change in shakedown for this.
+        in a multi-master world, the marathon bounce can lead to a misleading
+        http 200 for the service being up when it is NOT.   This waits for 4
+        consecutive 200s by default
+    """
+
+    global count
+    count = 0
+    print("{} Waiting for {} consecutive HTTP 200s for marathon up".format(shakedown.cli.helpers.fchr('>>'), require_count))
+    @retrying.retry(stop_max_attempt_number=300)
+    def wait_for_200():
+        global count
+        try:
+            response = get_marathon_url('ping')
+
+            if response.status_code == 200:
+                count = count + 1
+                if noisy:
+                    print("{}200 consecutive count:{}".format(shakedown.cli.helpers.fchr('>>'), count))
+            else:
+                count = 0
+        except:
+            count = 0
+            assert False
+        # need 4 consecutive 200s to call it good (what's your magic number?)
+        assert count >= require_count
+
+    wait_for_200()
 
 #############
 # moving to shakedown  END
