@@ -30,7 +30,7 @@ def mom_fix():
 def setup_module(module):
     set_marathon_service_name('marathon-user')
     common.ensure_mom()
-    shakedown.wait_for_service_endpoint('marathon-user')
+    common.wait_for_marathon_up()
     common.cluster_info()
     with marathon_on_marathon():
         clear_marathon()
