@@ -550,7 +550,6 @@ def cluster_info(mom_name='marathon-user'):
                 print("marathon MoM version: {}".format(about.get("version")))
 
             except Exception as e:
-                print(e)
                 print("Marathon MoM not present")
     else:
         print("Marathon MoM not present")
