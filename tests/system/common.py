@@ -979,6 +979,11 @@ def get_marathon_url(name):
     return http.get(url)
 
 
+def get_marathon_leader():
+    response = get_marathon_url('v2/leader')
+    return response.json()['leader'].split(':')[0]
+
+
 def delete_marathon_url(name):
     """ Invokes HTTP DELETE for marathon url with name
         ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
