@@ -1032,10 +1032,7 @@ def test_ping():
         This isn't provided by the client object and will need to create the url to test
     """
 
-    marathon_service_name = get_marathon_service_name()
-    marathon_url = shakedown.dcos_service_url(marathon_service_name)
-    url = urljoin(marathon_url, 'ping')
-    response = http.get(url)
+    response = common.get_marathon_url('ping')
     assert response.status_code == 200
     assert response.text == 'pong'
 
@@ -1169,17 +1166,12 @@ def test_network_pinger(test_type, get_pinger_app, dns_format):
     http_output_check()
 
 
-def remove_marathon_service_name():
-    del os.environ['MARATHON_NAME']
-
-
 def get_marathon_service_name():
-    return os.environ.get('MARATHON_NAME', 'marathon')
+    return common.get_marathon_service_name()
 
 
 def set_marathon_service_name(name='marathon'):
-    print('setting marathon_name to: {}'.format(name))
-    os.environ['MARATHON_NAME'] = name
+    common.set_marathon_service_name(name)
 
 
 def clear_marathon():

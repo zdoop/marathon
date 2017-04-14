@@ -549,6 +549,7 @@ def cluster_info(mom_name='marathon-user'):
                 print("marathon MoM version: {}".format(about.get("version")))
 
             except Exception as e:
+                print(e)
                 print("Marathon MoM not present")
     else:
         print("Marathon MoM not present")
@@ -608,6 +609,9 @@ def ip_of_mom():
 
 def ensure_mom():
     if not is_mom_installed():
+        # if there is an active deployment... wait for it.
+        # there is a odd state were an uninstall could still be in progress
+        deployment_wait()
 
         try:
             install_package_and_wait('marathon')
@@ -935,6 +939,52 @@ def set_service_account_permissions(service_account, ressource='dcos:superuser',
     url = urljoin(dcos_url(), 'acs/api/v1/acls/{}/users/{}/{}'.format(ressource, service_account, action))
     req = http.put(url)
     assert req.status_code == 204, 'Failed to grant permissions to the service account: {}, {}'.format(req, req.text)
+
+
+def remove_marathon_service_name():
+    del os.environ['MARATHON_NAME']
+
+
+def get_marathon_service_name():
+    return os.environ.get('MARATHON_NAME', 'marathon')
+
+
+def set_marathon_service_name(name='marathon'):
+    print('setting marathon_name to: {}'.format(name))
+    os.environ['MARATHON_NAME'] = name
+
+
+def marathon_url(uri=None):
+    """ Provides the marathon url for:
+        1. root - default
+        2. mom - requires the set_marathon_service_name to be properly set
+        It does NOT check the toml.  It uses the {dcos_url}/service/{marathon_service_name}
+
+        In addition, it is a convenient method to get marathon urls for calls that
+        are not supported by the dcos-cli.
+    """
+    marathon_service_name = get_marathon_service_name()
+    marathon_url = shakedown.dcos_service_url(marathon_service_name)
+    if uri:
+        marathon_url = urljoin(marathon_url, uri)
+
+    return marathon_url
+
+
+def get_marathon_url(name):
+    """ Invokes HTTP GET for marathon url with name
+        ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
+    """
+    url = marathon_url(name)
+    return http.get(url)
+
+
+def delete_marathon_url(name):
+    """ Invokes HTTP DELETE for marathon url with name
+        ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
+    """
+    url = marathon_url(name)
+    return http.delete(url)
 
 
 #############
