@@ -58,6 +58,40 @@ def test_marathon_delete_leader():
     marathon_leadership_changed()
 
 
+@masters(3)
+def test_marathon_zk_partition_leader_change():
+    marathon_service_name = get_marathon_service_name()
+
+    # TODO: make sure mesos leader and marathon leader are on differet nodes
+    original_leader = shakedown.marathon_leader_ip()
+    master_leader = shakedown.master_leader_ip()
+    print('marathon: {}'.format(original_leader))
+    print('leader: {}'.format(master_leader))
+
+    if original_leader == master_leader:
+        # switch
+        common.delete_marathon_path('v2/leader')
+        common.wait_for_marathon_up()
+        original_leader = shakedown.marathon_leader_ip()
+        print('switched leader to: {}'.format(original_leader))
+
+    # blocking zk on marathon leader (not master leader)
+    with shakedown.iptable_rules(original_leader):
+        block_port(original_leader, 2181, direction='INPUT')
+        block_port(original_leader, 2181, direction='OUTPUT')
+        #  time of the zk block
+        time.sleep(5)
+
+    common.wait_for_marathon_up()
+
+    @retrying.retry(stop_max_attempt_number=30)
+    def marathon_leadership_changed():
+        current_leader = shakedown.marathon_leader_ip()
+        assert original_leader != current_leader
+
+    marathon_leadership_changed()
+
+
 def test_external_volume():
     volume_name = "marathon-si-test-vol-{}".format(uuid.uuid4().hex)
     app_def = common.external_volume_mesos_app(volume_name)
