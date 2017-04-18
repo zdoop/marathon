@@ -41,11 +41,12 @@ class ValidationsResource @Inject() (
 
   private def normalizeApp(app: raml.App): raml.App = validateAndNormalizeApp.normalized(app)
 
-  private def normalizePod(pod: raml.Pod): raml.Pod = PodsResource.normalize(pod, config)
+  private def normalizePod(pod: raml.Pod): raml.Pod = PodNormalization.normalize(pod, config)
 
   private def normalizePod(pod: PodDefinition): PodDefinition = pod.copy(version = clock.now())
 
   @POST
+  @Path("app")
   def validateApp(
     body: Array[Byte],
     @Context req: HttpServletRequest): Response = authenticated(req) { implicit identity =>
@@ -67,6 +68,7 @@ class ValidationsResource @Inject() (
   }
 
   @POST
+  @Path("pod")
   def validatePod(
     body: Array[Byte],
     @Context req: HttpServletRequest): Response = {

@@ -1,0 +1,71 @@
+/app:
+  description: |
+    This endpoint is used to validate the given app definitions.
+
+  post:
+    is: [ secured, jsonValidator, objectValidator, objectCreator ]
+    description: |
+      Validates the posted app definition
+    body:
+      application/json:
+        type: app.App
+    responses:
+      200:
+        description: Validation was successfully
+        body:
+          application/json:
+            example: ""
+
+      422:
+        description: The entity send can not be preocessed, since there are validation errors.
+        body:
+          application/json:
+            type: error.Error
+            example: |
+                {
+                "message": "Object is not valid",
+                "details": [
+                  {
+                    "path": "/upgradeStrategy/minimumHealthCapacity",
+                    "errors": [
+                      "is greater than 1"
+                    ]
+                  }
+                ]
+                }
+
+/pod:
+  description: |
+    This endpoint is used to validate the given pod definitions.
+
+  post:
+    is: [ secured, jsonValidator, objectValidator, objectCreator ]
+    description: |
+      Validates the posted pod definition
+    body:
+      application/json:
+        type: app.App
+    responses:
+      200:
+        description: Validation was successfully
+        body:
+          application/json:
+            example: ""
+
+      422:
+        description: The entity send can not be preocessed, since there are validation errors.
+        body:
+          application/json:
+            type: error.Error
+            example: |
+                {
+                "message": "Object is not valid",
+                "details": [
+                  {
+                    "path": "/id",
+                    "errors": [
+                      "'containers' is undefined on object"
+                    ]
+                  }
+                ]
+                }

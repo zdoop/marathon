@@ -44,6 +44,12 @@ slightly different semantics. Any monitoring dashboards should be updated.
 Before 1.5.0 releases, we will publish a migration guide for the new metric formats and where the replacement
 metrics can be found and the formats they are now in.
 
+#### New validation endpoint
+It is now possible to validate a given app or pod definition against a dedicated validation endpoint `/v2/validations`.
+You can `POST` an app definition to `/v2/validations/app` and you receive a `HTTP 200` if validation succeeds or a `HTTP 422` plus a error json if validation fails.
+Same for pod definitions on `/v2/validations/pod`.
+In addition to `POST` on `/v2/apps` for example, this validation will raise a validation error in case of unknown properties.
+
 ## Changes from 1.4.1 to 1.4.2
 Bugfix release
 

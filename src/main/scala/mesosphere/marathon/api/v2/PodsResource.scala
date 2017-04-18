@@ -13,14 +13,14 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
 import com.wix.accord.Validator
 import mesosphere.marathon.api.v2.validation.PodsValidation
-import mesosphere.marathon.api.{ AuthResource, MarathonMediaType, RestResource, TaskKiller }
+import mesosphere.marathon.api._
 import mesosphere.marathon.core.appinfo.{ PodSelector, PodStatusService, Selector }
 import mesosphere.marathon.core.base.Clock
 import mesosphere.marathon.core.event._
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.core.pod.{ PodDefinition, PodManager }
 import mesosphere.marathon.plugin.auth._
-import mesosphere.marathon.raml.{ NetworkMode, Pod, Raml }
+import mesosphere.marathon.raml.{ Pod, Raml }
 import mesosphere.marathon.state.{ PathId, Timestamp }
 import mesosphere.marathon.util.SemanticVersion
 import play.api.libs.json.Json
@@ -49,7 +49,7 @@ class PodsResource @Inject() (
 
   // If we change/add/upgrade the notion of a Pod and can't do it purely in the internal model,
   // update the json first
-  private def normalize(pod: Pod): Pod = PodsResource.normalize(pod, config)
+  private def normalize(pod: Pod): Pod = PodNormalization.normalize(pod, config)
 
   // If we can normalize using the internal model, do that instead.
   // The version of the pod is changed here to make sure, the user has not send a version.
@@ -286,24 +286,4 @@ object PodsResource {
   def authzSelector(implicit authz: Authorizer, identity: Identity): PodSelector = Selector[PodDefinition] { pod =>
     authz.isAuthorized(identity, ViewRunSpec, pod)
   }
-
-  // If we change/add/upgrade the notion of a Pod and can't do it purely in the internal model,
-  // update the json first
-  def normalize(pod: Pod, marathonConfig: MarathonConf): Pod = {
-    if (pod.networks.exists(_.name.isEmpty)) {
-      val networks = pod.networks.map { network =>
-        if (network.mode == NetworkMode.Container && network.name.isEmpty) {
-          marathonConfig.defaultNetworkName.get.fold(network) { name =>
-            network.copy(name = Some(name))
-          }
-        } else {
-          network
-        }
-      }
-      pod.copy(networks = networks)
-    } else {
-      pod
-    }
-  }
-
 }
