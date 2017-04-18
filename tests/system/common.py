@@ -984,7 +984,6 @@ def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
         consecutive 200s by default
     """
 
-    global count
     count = 0
     print("{} Waiting for {} consecutive HTTP 200s for marathon up".format(shakedown.cli.helpers.fchr('>>'), require_count))
     @retrying.retry(stop_max_attempt_number=300)
