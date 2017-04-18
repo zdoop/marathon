@@ -1032,7 +1032,7 @@ def test_ping():
         This isn't provided by the client object and will need to create the url to test
     """
 
-    response = common.get_marathon_url('ping')
+    response = common.http_get_marathon_url('ping')
     assert response.status_code == 200
     assert response.text == 'pong'
 

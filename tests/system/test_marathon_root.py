@@ -43,7 +43,7 @@ def teardown_module(module):
 def test_marathon_delete_leader():
     marathon_service_name = get_marathon_service_name()
 
-    original_leader = common.get_marathon_leader()
+    original_leader = shakedown.marathon_leader_ip()
     print('leader: {}'.format(original_leader))
     common.delete_marathon_url('v2/leader')
 
@@ -51,7 +51,7 @@ def test_marathon_delete_leader():
 
     @retrying.retry(stop_max_attempt_number=30)
     def marathon_leadership_changed():
-        current_leader = common.get_marathon_leader()
+        current_leader = shakedown.marathon_leader_ip()
         print('leader: {}'.format(current_leader))
         assert original_leader != current_leader
 

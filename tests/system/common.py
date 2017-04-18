@@ -954,45 +954,29 @@ def set_marathon_service_name(name='marathon'):
     os.environ['MARATHON_NAME'] = name
 
 
-def marathon_url(uri=None):
-    """ Provides the marathon url for:
-        1. root - default
-        2. mom - requires the set_marathon_service_name to be properly set
-        It does NOT check the toml.  It uses the {dcos_url}/service/{marathon_service_name}
-
-        In addition, it is a convenient method to get marathon urls for calls that
-        are not supported by the dcos-cli.
+def get_marathon_endpoint(path, marathon_name='marathon'):
+    """Returns the url for the marathon endpoint
     """
-    marathon_service_name = get_marathon_service_name()
-    marathon_url = shakedown.dcos_service_url(marathon_service_name)
-    if uri:
-        marathon_url = urljoin(marathon_url, uri)
-
-    return marathon_url
+    return shakedown.dcos_url_path('service/{}/{}'.format(marathon_name, path))
 
 
-def get_marathon_url(name):
+def http_get_marathon_url(name, marathon_name='marathon'):
     """ Invokes HTTP GET for marathon url with name
         ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
     """
-    url = marathon_url(name)
+    url = get_marathon_endpoint(name, marathon_name)
     return http.get(url)
 
 
-def get_marathon_leader():
-    response = get_marathon_url('v2/leader')
-    return response.json()['leader'].split(':')[0]
-
-
-def delete_marathon_url(name):
+def delete_marathon_url(name, marathon_name='marathon'):
     """ Invokes HTTP DELETE for marathon url with name
         ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
     """
-    url = marathon_url(name)
+    url = get_marathon_endpoint(name, marathon_name)
     return http.delete(url)
 
 
-def wait_for_marathon_up(require_count=4, noisy=True):
+def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
     """
         need to investigate what we can change in shakedown for this.
         in a multi-master world, the marathon bounce can lead to a misleading
@@ -1007,7 +991,7 @@ def wait_for_marathon_up(require_count=4, noisy=True):
     def wait_for_200():
         global count
         try:
-            response = get_marathon_url('ping')
+            response = http_get_marathon_url('ping', marathon_name)
 
             if response.status_code == 200:
                 count = count + 1
