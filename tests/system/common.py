@@ -945,19 +945,6 @@ def set_service_account_permissions(service_account, ressource='dcos:superuser',
     assert req.status_code == 204, 'Failed to grant permissions to the service account: {}, {}'.format(req, req.text)
 
 
-def remove_marathon_service_name():
-    del os.environ['MARATHON_NAME']
-
-
-def get_marathon_service_name():
-    return os.environ.get('MARATHON_NAME', 'marathon')
-
-
-def set_marathon_service_name(name='marathon'):
-    print('setting marathon_name to: {}'.format(name))
-    os.environ['MARATHON_NAME'] = name
-
-
 def get_marathon_endpoint(path, marathon_name='marathon'):
     """Returns the url for the marathon endpoint
     """
@@ -982,7 +969,7 @@ def delete_marathon_path(name, marathon_name='marathon'):
     return http.delete(url)
 
 
-def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
+def wait_for_marathon_up(marathon_name='marathon', require_count=4, noisy=True):
     """
         need to investigate what we can change in shakedown for this.
         in a multi-master world, the marathon bounce can lead to a misleading
@@ -995,7 +982,8 @@ def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
 
     @retrying.retry(stop_max_attempt_number=300)
     def wait_for_200():
-        global count
+        nonlocal count
+
         try:
             response = http_get_marathon_path('ping', marathon_name)
 
@@ -1005,9 +993,12 @@ def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
                     print("{}200 consecutive count:{}".format(shakedown.cli.helpers.fchr('>>'), count))
             else:
                 count = 0
-        except:
+        except Exception as e:
+            if noisy:
+                print(e)
             count = 0
             assert False
+
         # need 4 consecutive 200s to call it good (what's your magic number?)
         assert count >= require_count
 

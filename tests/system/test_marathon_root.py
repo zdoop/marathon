@@ -15,18 +15,16 @@ from marathon_common_tests import *
 from marathon_pods_tests import *
 from shakedown import (masters, required_masters)
 
-pytestmark = [pytest.mark.usefixtures('marathon_clean')]
+pytestmark = [pytest.mark.usefixtures('marathon_service_name')]
 
 
 @pytest.fixture(scope="function")
-def marathon_clean():
-    yield
+def marathon_service_name():
+    yield 'marathon'
     clear_marathon()
 
 
 def setup_module(module):
-    set_marathon_service_name('marathon')
-
     common.cluster_info()
     clear_marathon()
 
@@ -40,8 +38,7 @@ def teardown_module(module):
 
 
 @masters(3)
-def test_marathon_delete_leader():
-    marathon_service_name = get_marathon_service_name()
+def test_marathon_delete_leader(marathon_service_name):
 
     original_leader = shakedown.marathon_leader_ip()
     print('leader: {}'.format(original_leader))
@@ -59,8 +56,7 @@ def test_marathon_delete_leader():
 
 
 @masters(3)
-def test_marathon_zk_partition_leader_change():
-    marathon_service_name = get_marathon_service_name()
+def test_marathon_zk_partition_leader_change(marathon_service_name):
 
     # TODO: make sure mesos leader and marathon leader are on differet nodes
     original_leader = shakedown.marathon_leader_ip()
