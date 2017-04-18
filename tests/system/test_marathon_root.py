@@ -45,7 +45,7 @@ def test_marathon_delete_leader():
 
     original_leader = shakedown.marathon_leader_ip()
     print('leader: {}'.format(original_leader))
-    common.delete_marathon_url('v2/leader')
+    common.delete_marathon_path('v2/leader')
 
     common.wait_for_marathon_up()
 

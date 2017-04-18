@@ -1,5 +1,7 @@
 """ """
 from shakedown import *
+from shakedown import http
+
 from utils import *
 from dcos.errors import DCOSException
 from distutils.version import LooseVersion
@@ -610,7 +612,9 @@ def ip_of_mom():
 def ensure_mom():
     if not is_mom_installed():
         # if there is an active deployment... wait for it.
-        # there is a odd state were an uninstall could still be in progress
+        # it is possible that mom is currently in the process of being uninstalled
+        # in which case it will not report as installed however install will fail
+        # until the deployment is finished.
         deployment_wait()
 
         try:
@@ -960,7 +964,7 @@ def get_marathon_endpoint(path, marathon_name='marathon'):
     return shakedown.dcos_url_path('service/{}/{}'.format(marathon_name, path))
 
 
-def http_get_marathon_url(name, marathon_name='marathon'):
+def http_get_marathon_path(name, marathon_name='marathon'):
     """ Invokes HTTP GET for marathon url with name
         ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
     """
@@ -968,9 +972,11 @@ def http_get_marathon_url(name, marathon_name='marathon'):
     return http.get(url)
 
 
-def delete_marathon_url(name, marathon_name='marathon'):
+# PR added to dcos-cli (however it takes weeks)
+# https://github.com/dcos/dcos-cli/pull/974
+def delete_marathon_path(name, marathon_name='marathon'):
     """ Invokes HTTP DELETE for marathon url with name
-        ex.  name='ping'  http GET {dcos_url}/service/marathon/ping
+        ex.  name='v2/leader'  http GET {dcos_url}/service/marathon/v2/leader
     """
     url = get_marathon_endpoint(name, marathon_name)
     return http.delete(url)
@@ -986,11 +992,12 @@ def wait_for_marathon_up(require_count=4, marathon_name='marathon', noisy=True):
 
     count = 0
     print("{} Waiting for {} consecutive HTTP 200s for marathon up".format(shakedown.cli.helpers.fchr('>>'), require_count))
+
     @retrying.retry(stop_max_attempt_number=300)
     def wait_for_200():
         global count
         try:
-            response = http_get_marathon_url('ping', marathon_name)
+            response = http_get_marathon_path('ping', marathon_name)
 
             if response.status_code == 200:
                 count = count + 1

@@ -1032,7 +1032,7 @@ def test_ping():
         This isn't provided by the client object and will need to create the url to test
     """
 
-    response = common.http_get_marathon_url('ping')
+    response = common.http_get_marathon_path('ping')
     assert response.status_code == 200
     assert response.text == 'pong'
 
@@ -1136,8 +1136,8 @@ def test_network_pinger(test_type, get_pinger_app, dns_format):
     """
     marathon_service_name = get_marathon_service_name()
     client = marathon.create_client()
-    pinger_app = get_pinger_app('pinger') #add_container_network(common.pinger_localhost_app(), 'dcos')
-    relay_app = get_pinger_app('relay')  #add_container_network(common.pinger_localhost_app('relay'), 'dcos')
+    pinger_app = get_pinger_app('pinger')  # add_container_network(common.pinger_localhost_app(), 'dcos')
+    relay_app = get_pinger_app('relay')   # add_container_network(common.pinger_localhost_app('relay'), 'dcos')
     pinger_dns = dns_format.format('pinger', marathon_service_name)
     relay_dns = dns_format.format('relay', marathon_service_name)
 
@@ -1154,7 +1154,6 @@ def test_network_pinger(test_type, get_pinger_app, dns_format):
     relay_url = 'http://{}:7777/relay-ping?url={}:7777'.format(
         relay_dns, pinger_dns
     )
-
 
     @retrying.retry
     def http_output_check(stop_max_attempt_number=30):
