@@ -1130,8 +1130,8 @@ def test_network_pinger(test_type, get_pinger_app, dns_format, marathon_service_
     is running or may be failing.
     """
     client = marathon.create_client()
-    pinger_app = get_pinger_app('pinger')  # add_container_network(common.pinger_localhost_app(), 'dcos')
-    relay_app = get_pinger_app('relay')   # add_container_network(common.pinger_localhost_app('relay'), 'dcos')
+    pinger_app = get_pinger_app('pinger')
+    relay_app = get_pinger_app('relay')
     pinger_dns = dns_format.format('pinger', marathon_service_name)
     relay_dns = dns_format.format('relay', marathon_service_name)
 
@@ -1160,9 +1160,11 @@ def test_network_pinger(test_type, get_pinger_app, dns_format, marathon_service_
 
 
 def clear_marathon():
-    common.stop_all_deployments()
-    common.delete_all_apps_wait()
-
+    try:
+        common.stop_all_deployments()
+        common.delete_all_apps_wait()
+    except Exception as e:
+        print(e)
 
 def app_ucr(app_id=None):
     if app_id is None:
