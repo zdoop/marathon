@@ -3,7 +3,11 @@
  */
 
 def is_phabricator_build() {
-  return (env.DIFF_ID != null && !env.DIFF_ID.isEmpty())
+  return (env.REVISION_ID != null && !env.REVISION_ID.isEmpty())
+}
+
+def is_submit_request() {
+  return env.TARGET_BRANCH != null
 }
 
 def is_release_build(gitTag) {
@@ -151,71 +155,69 @@ def stage_with_commit_status(label, block) {
 }
 
 def report_success() {
-  if (is_phabricator_build()) {
-    phabricator_test_results("pass")
-    try {
-      phabricator("differential.revision.edit", """ transactions: [{type: "accept", value: true}, {type: "comment", value: "\u221a Build of $DIFF_ID completed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
-    } catch (Exception err) {
-      phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u221a Build of $DIFF_ID completed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
-    }
-  } else {
-    if (is_master_or_release()) {
-      if (previousBuildFailed()) {
-        slackSend(
-            message: "\u2714 ̑̑branch `${env.BRANCH_NAME}` is green again. (<${env.BUILD_URL}|Open>)",
-            color: "good",
-            channel: "#marathon-dev",
-            tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
+  if (!is_submit_request()) {
+    if (is_phabricator_build()) {
+      phabricator_test_results("pass")
+      try {
+        phabricator("differential.revision.edit", """ transactions: [{type: "accept", value: true}, {type: "comment", value: "\u221a Build of $DIFF_ID completed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
+      } catch (Exception err) {
+        phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u221a Build of $DIFF_ID completed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
       }
+    } else {
+      if (is_master_or_release()) {
+        if (previousBuildFailed() && currentBuild.result == 'SUCCESS') {
+          slackSend(
+              message: "\u2714 ̑̑branch `${env.BRANCH_NAME}` is green again. (<${env.BUILD_URL}|Open>)",
+              color: "good",
+              channel: "#marathon-dev",
+              tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
+        }
+      }
+      step([$class: 'GitHubCommitStatusSetter'
+          , errorHandlers: [[$class: 'ShallowAnyErrorHandler']]
+          , contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "Velocity All"]
+      ])
     }
-    step([$class: 'GitHubCommitStatusSetter'
-        , errorHandlers: [[$class: 'ShallowAnyErrorHandler']]
-        , contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "Velocity All"]
-        , statusResultSource: [
-            $class: 'ConditionalStatusResultSource'
-            , results: [
-                [$class: 'BetterThanOrEqualBuildResult', result: 'UNSTABLE', state: 'SUCCESS', message: build.description],
-                [$class: 'BetterThanOrEqualBuildResult', result: 'FAILURE', state: 'FAILURE', message: build.description],
-                [$class: 'AnyBuildResult', state: 'FAILURE', message: 'Loophole']
-            ]
-        ]
-    ])
   }
 }
 
 def report_failure() {
-  if (is_phabricator_build()) {
-    phabricator_test_results("fail")
-    try {
-      phabricator("differential.revision.edit", """ transactions: [{type: "reject", value: true}, {type: "comment", value: "\u2717 Build of $DIFF_ID Failed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
-    } catch (Exception ignored) {
-      phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u2717 Build of $DIFF_ID Failed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
+  if (!is_submit_request()) {
+    if (is_phabricator_build()) {
+      phabricator_test_results("fail")
+      try {
+        phabricator("differential.revision.edit", """ transactions: [{type: "reject", value: true}, {type: "comment", value: "\u2717 Build of $DIFF_ID Failed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
+      } catch (Exception ignored) {
+        phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u2717 Build of $DIFF_ID Failed at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
+      }
+    } else {
+      if (is_master_or_release()) {
+        slackSend(
+            message: "\u2718 branch `${env.BRANCH_NAME}` failed in build `${env.BUILD_NUMBER}`. (<${env.BUILD_URL}|Open>)",
+            color: "danger",
+            channel: "#marathon-dev",
+            tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
+      }
+      step([$class: 'GitHubCommitStatusSetter'
+          , errorHandlers: [[$class: 'ShallowAnyErrorHandler']]
+          , contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "Velocity All"]
+      ])
     }
-  } else {
-    if (is_master_or_release()) {
-      slackSend(
-          message: "\u2718 branch `${env.BRANCH_NAME}` failed in build `${env.BUILD_NUMBER}`. (<${env.BUILD_URL}|Open>)",
-          color: "danger",
-          channel: "#marathon-dev",
-          tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
-    }
-    step([$class: 'GitHubCommitStatusSetter'
-        , errorHandlers: [[$class: 'ShallowAnyErrorHandler']]
-        , contextSource: [$class: 'ManuallyEnteredCommitContextSource', context: "Velocity All"]
-    ])
   }
 }
 
 def report_unstable_tests() {
-  if (is_phabricator_build()) {
-    phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u26a0 Build of $DIFF_ID has Unstable Tests at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
-  } else if (is_master_or_release()) {
-    slackSend(message: "\u26a0 branch `${env.BRANCH_NAME}` has unstable tests in build `${env.BUILD_NUMBER}`. (<${env.BUILD_URL}|Open>)",
-        color: "danger",
-        channel: "#marathon-dev",
-        tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
-  } else {
-    // TODO: Can we comment on PRs?
+  if (!is_submit_request()) {
+    if (is_phabricator_build()) {
+      phabricator("differential.revision.edit", """ transactions: [{type: "comment", value: "\u26a0 Build of $DIFF_ID has Unstable Tests at $BUILD_URL"}], objectIdentifier: "D$REVISION_ID" """)
+    } else if (is_master_or_release()) {
+      slackSend(message: "\u26a0 branch `${env.BRANCH_NAME}` has unstable tests in build `${env.BUILD_NUMBER}`. (<${env.BUILD_URL}|Open>)",
+          color: "danger",
+          channel: "#marathon-dev",
+          tokenCredentialId: "f430eaac-958a-44cb-802a-6a943323a6a8")
+    } else {
+      // TODO: Can we comment on PRs?
+    }
   }
 }
 
@@ -229,11 +231,18 @@ def setBuildInfo(displayName, description) {
 def checkout_marathon() {
   install_dependencies()
   if (is_phabricator_build()) {
-    setBuildInfo("D$REVISION_ID($DIFF_ID) #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
-    git changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
-    sh """git checkout master && git branch | grep -v master | xargs git branch -D || true"""
-    phabricator_apply_diff("$PHID", "$BUILD_URL", "$REVISION_ID", "$DIFF_ID")
-    clean_git()
+    if (is_submit_request()) {
+      setBuildInfo("D$REVISION_ID($DIFF_ID) -> $TARGET_BRANCH #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
+      git branch: TARGET_BRANCH, changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
+      sh "arc patch --nobranch $REVISION_ID"
+      clean_git()
+    } else {
+      setBuildInfo("D$REVISION_ID($DIFF_ID) #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
+      git changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
+      sh """git checkout master && git branch | grep -v master | xargs git branch -D || true"""
+      phabricator_apply_diff("$PHID", "$BUILD_URL", "$REVISION_ID", "$DIFF_ID")
+      clean_git()
+    }
   } else {
     checkout scm
     gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
@@ -462,6 +471,11 @@ def build_marathon() {
         unstable_test()
       } else {
         echo "\u2714 No Unstable Tests!"
+      }
+    }
+    if (is_submit_request()) {
+      stage("Merge Patch") {
+        sh "git commit --amend --signoff --noedit && git push"
       }
     }
     report_success()
