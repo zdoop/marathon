@@ -486,7 +486,7 @@ def build_marathon() {
     if (is_submit_request()) {
       stage("Merge Patch") {
         configFileProvider([configFile(fileId: 'a7a9bcc5-5db0-40c3-a8dd-6ab52e2ccadd', targetLocation: '/home/admin/.gnupg/privatekey.tmp')]) {
-          sh "gpg --import /home/admin/.gnupg/privatekey.tmp"
+          sh "gpg --import /home/admin/.gnupg/privatekey.tmp || true"
         }
         sshagent(['mesosphere-ci-github']) {
           sh """git config user.name "Mesosphere CI Robot" && \
