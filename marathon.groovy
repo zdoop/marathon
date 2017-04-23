@@ -239,7 +239,7 @@ def checkout_marathon() {
   if (is_phabricator_build()) {
     if (is_submit_request()) {
       setBuildInfo("D$REVISION_ID -> $TARGET_BRANCH #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
-      if (!is_phabricator_fully_accepted($REVISION_ID)) {
+      if (!is_phabricator_fully_accepted(REVISION_ID)) {
         error "Patch is not fully accepted, required: 2 accepts + jenkins and 0 rejects."
       }
       git branch: TARGET_BRANCH, changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
