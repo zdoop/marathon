@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+mkdir -p $HOME/.jenkins || true
+api_token_file="$HOME/.jenkins/api-token"
+api_token=$(cat "$api_token_file" || true)
+user=$(git config user.email)
+if [ -z "$api_token" ]; then
+    echo
+    echo "Obtain your API token from https://jenkins.mesosphere.com/service/jenkins/user/$user/configure"
+    echo "After entering here, it will be saved in $api_token_file; keep it safe!"
+    read -p "Enter your Jenkins API token: " api_token
+    echo $api_token > "$api_token_file"
+fi
+target_branch=master
+if [[ ! -z $2 ]]; then
+  target_branch=$2
+fi
+curl -L -X POST -u $user:$api_token "https://jenkins.mesosphere.com/job/marathon-phabricator-submit/buildWithParameters?REVISION_ID=$1&TARGET_BRANCH=$target_branch&delay=0sec"
+
+echo "Merge request of $1 onto '$target_branch' submitted, check https://jenkins.mesosphere.com/service/jenkins/view/Marathon/job/marathon-phabricator-submit/ for status"
