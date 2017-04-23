@@ -486,10 +486,12 @@ def build_marathon() {
     }*/
     if (is_submit_request()) {
       stage("Merge Patch") {
-        sh """git config user.name "Jenkins" && \
-              git config user.email "noreply@mesosphere.com" &&\
-              git commit --amend --signoff --no-edit &&\
-              git push origin $TARGET_BRANCH"""
+        sshagent(['mesosphere-ci-github']) {
+          sh """git config user.name "Jenkins" && \
+                git config user.email "noreply@mesosphere.com" &&\
+                git commit --amend --signoff --no-edit &&\
+                git push origin $TARGET_BRANCH"""
+        }
       }
     }
     report_success()
