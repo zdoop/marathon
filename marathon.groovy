@@ -452,7 +452,7 @@ def archive_artifacts() {
 
 def build_marathon() {
   try {
-    stage("Kill Junk") {
+    /*stage("Kill Junk") {
       kill_junk()
     }
     stage("Install Mesos") {
@@ -482,13 +482,17 @@ def build_marathon() {
       } else {
         echo "\u2714 No Unstable Tests!"
       }
-    }
+    }*/
     if (is_submit_request()) {
       stage("Merge Patch") {
+        configFileProvider([configFile(fileId: 'a7a9bcc5-5db0-40c3-a8dd-6ab52e2ccadd', targetLocation: '/home/admin/.gnupg/privatekey.tmp')]) {
+          sh "gpg --import /home/admin/.gnupg/privatekey.tmp"
+        }
         sshagent(['mesosphere-ci-github']) {
           sh """git config user.name "Jenkins" && \
                 git config user.email "noreply@mesosphere.com" &&\
-                git commit --amend --signoff --no-edit &&\
+                git config user.signingkey 32725FF3 &&\
+                git commit -S --amend --signoff --no-edit &&\
                 git push origin $TARGET_BRANCH"""
         }
       }
