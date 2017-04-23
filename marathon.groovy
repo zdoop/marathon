@@ -241,9 +241,9 @@ def checkout_marathon() {
     if (is_submit_request()) {
       setBuildInfo("D$REVISION_ID -> $TARGET_BRANCH #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
       git branch: TARGET_BRANCH, changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
-      /*if (!is_phabricator_fully_accepted(REVISION_ID)) {
+      if (!is_phabricator_fully_accepted(REVISION_ID)) {
         error "Patch is not fully accepted, required: 2 accepts + jenkins and 0 rejects."
-      }*/
+      }
       sh "arc patch --nobranch $REVISION_ID"
       clean_git()
     } else {
@@ -452,7 +452,7 @@ def archive_artifacts() {
 
 def build_marathon() {
   try {
-    /*stage("Kill Junk") {
+    stage("Kill Junk") {
       kill_junk()
     }
     stage("Install Mesos") {
@@ -482,10 +482,11 @@ def build_marathon() {
       } else {
         echo "\u2714 No Unstable Tests!"
       }
-    }*/
+    }
     if (is_submit_request()) {
       stage("Merge Patch") {
         configFileProvider([configFile(fileId: 'a7a9bcc5-5db0-40c3-a8dd-6ab52e2ccadd', targetLocation: '/home/admin/.gnupg/privatekey.tmp')]) {
+          // Don't fail if the key is already imported.
           sh "gpg --import /home/admin/.gnupg/privatekey.tmp || true"
         }
         sshagent(['mesosphere-ci-github']) {
