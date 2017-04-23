@@ -239,11 +239,11 @@ def checkout_marathon() {
   if (is_phabricator_build()) {
     if (is_submit_request()) {
       setBuildInfo("D$REVISION_ID -> $TARGET_BRANCH #$BUILD_NUMBER", "<a href=\"https://phabricator.mesosphere.com/D$REVISION_ID\">D$REVISION_ID</a>")
+      git branch: TARGET_BRANCH, changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
       if (!is_phabricator_fully_accepted(REVISION_ID)) {
         // TODO: Switch back to error. We don't have any reviews right now that are in this state.
         echo "Patch is not fully accepted, required: 2 accepts + jenkins and 0 rejects."
       }
-      git branch: TARGET_BRANCH, changelog: false, credentialsId: '4ff09dce-407b-41d3-847a-9e6609dd91b8', poll: false, url: 'git@github.com:mesosphere/marathon.git'
       sh "arc patch --nobranch $REVISION_ID"
       clean_git()
     } else {
@@ -452,7 +452,6 @@ def archive_artifacts() {
 
 def build_marathon() {
   try {
-    /*
     stage("Kill Junk") {
       kill_junk()
     }
@@ -483,7 +482,7 @@ def build_marathon() {
       } else {
         echo "\u2714 No Unstable Tests!"
       }
-    }*/
+    }
     if (is_submit_request()) {
       stage("Merge Patch") {
         sshagent(['mesosphere-ci-github']) {
