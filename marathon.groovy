@@ -486,7 +486,7 @@ def build_marathon() {
     }*/
     if (is_submit_request()) {
       stage("Merge Patch") {
-        sh "git commit --amend --signoff --noedit && git push"
+        sh "git commit --amend --signoff --no-edit && git push $TARGET_BRANCH"
       }
     }
     report_success()
