@@ -489,8 +489,8 @@ def build_marathon() {
           sh "gpg --import /home/admin/.gnupg/privatekey.tmp"
         }
         sshagent(['mesosphere-ci-github']) {
-          sh """git config user.name "Jenkins" && \
-                git config user.email "noreply@mesosphere.com" &&\
+          sh """git config user.name "Mesosphere CI Robot" && \
+                git config user.email "mesosphere-ci@users.noreply.github.com" &&\
                 git config user.signingkey 32725FF3 &&\
                 git commit -S --amend --signoff --no-edit &&\
                 git push origin $TARGET_BRANCH"""
