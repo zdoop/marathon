@@ -86,7 +86,7 @@ def is_phabricator_fully_accepted(revision_id) {
   return sh(script: """ jq -n '{ queryKey: "all", constraints: { ids: [$revision_id] }, attachments: { "reviewers" : true } }' |\
                         arc call-conduit differential.revision.search |\
                         jq -e '.response.data[0].attachments.reviewers.reviewers | map(if .status == "rejected" then -100 elif .status == "accepted" then 1 else 0 end) | add | if . >= 3 then true else false end' """,
-                        returnStatus: true)
+                        returnStatus: true) == 0
 }
 
 // installs mesos at the revision listed in the build.
