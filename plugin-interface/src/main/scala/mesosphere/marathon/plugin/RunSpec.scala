@@ -25,6 +25,11 @@ trait RunSpec {
     * The networks that this run specification will join.
     */
   val networks: Seq[NetworkSpec]
+
+  /**
+    * The volumes that are mounted
+    */
+  val volumes: Seq[VolumeSpec]
 }
 
 /**
@@ -104,4 +109,20 @@ trait PodSpec extends RunSpec {
     * The labels in that pod.
     */
   val labels: Map[String, String]
+}
+
+/**
+  * A volume definition
+  */
+trait VolumeSpec {
+
+  val containerPath: String
+}
+
+/**
+  * A volume with a secret
+  */
+trait SecretVolumeSpec extends VolumeSpec {
+
+  val secret: Secret
 }
