@@ -25,11 +25,6 @@ trait RunSpec {
     * The networks that this run specification will join.
     */
   val networks: Seq[NetworkSpec]
-
-  /**
-    * The volumes that are mounted
-    */
-  val volumes: Seq[VolumeSpec]
 }
 
 /**
@@ -51,6 +46,11 @@ trait ApplicationSpec extends RunSpec {
     * The labels in that app.
     */
   val labels: Map[String, String]
+
+  /**
+    * Application container definition
+    */
+  val container: ContainerSpec
 }
 
 /**
@@ -77,6 +77,11 @@ trait ContainerSpec {
     * The labels in that container
     */
   val labels: Map[String, String]
+
+  /**
+    * Container volume
+    */
+  val volume: Option[VolumeSpec]
 }
 
 /**
