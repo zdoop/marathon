@@ -13,7 +13,6 @@ properties([
     ])
 ])
 
-
 ansiColor('gnome-terminal') {
   node('JenkinsMarathonCI-Debian8-2017-04-25') {
     // fetch the file directly from SCM so the job can use it to checkout the rest of the pipeline.
