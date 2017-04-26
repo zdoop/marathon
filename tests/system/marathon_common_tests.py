@@ -315,7 +315,10 @@ def test_bad_uri():
     client = marathon.create_client()
     client.add_app(app_def)
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000)
+    def ignore_exceptions(result):
+        return True
+
+    @retrying.retry(wait_fixed=1000, stop_max_delay=10000,retry_on_exception=ignore_exceptions)
     def check_failure_message():
         appl = client.get_app(app_id)
         message = appl['lastTaskFailure']['message']
