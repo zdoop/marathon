@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 import requests
 import os
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas
-from datetime import datetime
+from datetime import datetime, timedelta
 from tabulate import tabulate
+
+import json
 
 ENDPOINT = "https://phabricator.mesosphere.com/api"
 
@@ -129,5 +134,39 @@ def query_closed_reviews():
 
     print(all_stats)
 
+
+def scatter_plot_lines():
+    conduit_token = os.getenv('CONDUIT_TOKEN')
+
+    if not conduit_token:
+        print("Please define a token with: CONDUIT_TOKEN=1234 ./review.py")
+        exit(1)
+
+    params = {'status': 'status-closed', 'api.token': conduit_token}
+    result = requests.get(
+            "{}/differential.query".format(ENDPOINT), params).json()
+    #with open('diff.json') as diff:
+    #        result = json.load(diff)
+
+    data_frame = pandas.io.json.json_normalize(result, 'result')
+    dates = data_frame[['dateCreated', 'dateModified']].apply(
+        pandas.to_numeric).applymap(lambda d: datetime.fromtimestamp(d))
+
+    total_life_times = (life_time(dates) / np.timedelta64(1, 's')).astype('int')
+    line_counts = data_frame['lineCount'].astype('int')
+
+    # Scatter plot
+    matplotlib.style.use('ggplot')
+    df = pandas.DataFrame( {'totalLifetTime': total_life_times, 'lineCount': line_counts })
+    df = df[(df['lineCount'] < 1000) & (df['totalLifetTime'] < 464000)]
+    ax = df.plot.scatter(x='lineCount', y='totalLifetTime')
+
+    vals = ax.get_yticks()
+    ax.set_yticklabels([timedelta(seconds=y) for y in vals])
+
+    plt.show()
+
+
 if __name__ == "__main__":
-    query_closed_reviews()
+    #query_closed_reviews()
+    scatter_plot_lines()
