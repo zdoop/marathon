@@ -16,7 +16,7 @@ from common import (app, app_mesos, block_port, cluster_info, ensure_mom, group,
 from datetime import timedelta
 from dcos import http, marathon, mesos
 from shakedown import (dcos_1_8, dcos_1_9, dcos_1_10, dcos_version_less_than, private_agents, required_private_agents,
-                       marthon_version_less_than, mom_version_less_than)
+                       marthon_version_less_than)
 from urllib.parse import urljoin
 from utils import fixture_dir, get_resource
 
@@ -501,18 +501,18 @@ def test_command_health_check_healthy():
 
 
 # todo need to take a look
-@pytest.mark.parametrize('protocol', [
-   'MESOS_HTTPS',
-   pytest.mark.skipif('mom_version_less_than("1.4.2")')('HTTPS')
-])
-def test_https_health_check_healthy(protocol):
-    """ Test HTTPS and MESOS_HTTPS protocols with a prepared nginx image that enables
-        SSL (using self-signed certificate) and listens on 443
-    """
-    client = marathon.create_client()
-    app_def = nginx_with_ssl_support()
-
-    assert_app_healthy(client, app_def, health_check(protocol=protocol, port_index=1))
+# @pytest.mark.parametrize('protocol', [
+#    'MESOS_HTTPS',
+#    pytest.mark.skipif('mom_version_less_than("1.4.2")')('HTTPS')
+# ])
+# def test_https_health_check_healthy(protocol):
+#     """ Test HTTPS and MESOS_HTTPS protocols with a prepared nginx image that enables
+#         SSL (using self-signed certificate) and listens on 443
+#     """
+#     client = marathon.create_client()
+#     app_def = nginx_with_ssl_support()
+#
+#     assert_app_healthy(client, app_def, health_check(protocol=protocol, port_index=1))
 
 
 def test_health_check_unhealthy():
