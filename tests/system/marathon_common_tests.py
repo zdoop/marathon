@@ -179,8 +179,8 @@ def test_docker_port_mappings():
     assert output == "200"
 
 
-def ignore_exceptions(result):
-    return True
+def retry_on_exception(exc):
+    return isinstance(exc, Exception)
 
 
 def test_docker_dns_mapping(marathon_service_name):
@@ -300,7 +300,7 @@ def test_bad_user():
     client = marathon.create_client()
     client.add_app(app_def)
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=ignore_exceptions)
+    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=retry_on_exception)
     def check_failure_message():
         appl = client.get_app(app_id)
         message = appl['lastTaskFailure']['message']
@@ -325,7 +325,7 @@ def test_bad_uri():
     client.add_app(app_def)
 
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=ignore_exceptions)
+    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=retry_on_exception)
     def check_failure_message():
         appl = client.get_app(app_id)
         message = appl['lastTaskFailure']['message']
@@ -950,7 +950,7 @@ def _test_declined_offer(app_id, app_def, reason):
     client = marathon.create_client()
     client.add_app(app_def)
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=ignore_exceptions)
+    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=retry_on_exception)
     def verify_declined_offer():
         deployments = client.get_deployments(app_id)
         assert len(deployments) == 1
