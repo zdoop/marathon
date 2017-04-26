@@ -21,7 +21,7 @@ import com.typesafe.scalalogging.StrictLogging
 import mesosphere.AkkaUnitTestLike
 import mesosphere.marathon.api.RestResource
 import mesosphere.marathon.integration.facades._
-import mesosphere.marathon.raml.{ App, AppHealthCheck, AppVolume, PodState, PodStatus, ReadMode }
+import mesosphere.marathon.raml.{ App, AppDockerVolume, AppHealthCheck, PodState, PodStatus, ReadMode }
 import mesosphere.marathon.state.PathId
 import mesosphere.marathon.test.ExitDisabledTest
 import mesosphere.marathon.util.{ Lock, Retry }
@@ -341,7 +341,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
           network = Some(raml.DockerNetwork.Host)
         )),
         volumes = collection.immutable.Seq(
-          new AppVolume(hostPath = Some(s"$projectDir/src/test/python"), containerPath = s"$containerDir/python", mode = ReadMode.Ro)
+          new AppDockerVolume(hostPath = Some(s"$projectDir/src/test/python"), containerPath = s"$containerDir/python", mode = ReadMode.Ro)
         )
       )),
       instances = instances,
