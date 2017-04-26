@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import requests
 import os
 import matplotlib
@@ -99,7 +100,7 @@ def query_open_reviews():
     print(age_stats)
 
 
-def query_closed_reviews():
+def query_closed_reviews(args):
     conduit_token = os.getenv('CONDUIT_TOKEN')
 
     if not conduit_token:
@@ -135,7 +136,7 @@ def query_closed_reviews():
     print(all_stats)
 
 
-def scatter_plot_lines():
+def scatter_plot_lines(args):
     conduit_token = os.getenv('CONDUIT_TOKEN')
 
     if not conduit_token:
@@ -168,5 +169,17 @@ def scatter_plot_lines():
 
 
 if __name__ == "__main__":
-    #query_closed_reviews()
-    scatter_plot_lines()
+    parser = argparse.ArgumentParser(prog='review')
+    subparsers = parser.add_subparsers()
+
+    stats_cmd = subparsers.add_parser('stats', help='Show statistics on review life times.')
+    stats_cmd.set_defaults(func=query_closed_reviews)
+
+    plot_cmd = subparsers.add_parser('plot', help ='Plot number of line changes vs life times.')
+    plot_cmd.set_defaults(func=scatter_plot_lines)
+
+    try:
+        options = parser.parse_args()
+        options.func(options)
+    except AttributeError:
+        parser.print_help()
