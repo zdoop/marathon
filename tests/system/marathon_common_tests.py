@@ -318,7 +318,7 @@ def test_bad_uri():
     def ignore_exceptions(result):
         return True
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000,retry_on_exception=ignore_exceptions)
+    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=ignore_exceptions)
     def check_failure_message():
         appl = client.get_app(app_id)
         message = appl['lastTaskFailure']['message']
@@ -984,6 +984,11 @@ def test_event_channel():
         assert 'Killed' in stdout
 
 
+def docker_env_set():
+    return 'DOCKER_HUB_USERNAME' not in os.environ and 'DOCKER_HUB_PASSWORD' not in os.environ
+
+
+@pytest.mark.skipif("docker_env_set()")
 def test_private_repository_docker_app():
     # Create and copy docker credentials to all private agents
     assert 'DOCKER_HUB_USERNAME' in os.environ, "Couldn't find docker hub username. $DOCKER_HUB_USERNAME is not set"
@@ -1165,6 +1170,7 @@ def clear_marathon():
         common.delete_all_apps_wait()
     except Exception as e:
         print(e)
+
 
 def app_ucr(app_id=None):
     if app_id is None:
