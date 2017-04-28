@@ -483,10 +483,11 @@ def package_binaries() {
 }
 
 def archive_artifacts() {
-  archiveArtifacts artifacts: 'target/**/classes/**', allowEmptyArchive: true
-  archiveArtifacts artifacts: 'target/universal/marathon-*.zip', allowEmptyArchive: false
-  archiveArtifacts artifacts: 'target/universal/marathon-*.txz', allowEmptyArchive: false
-  archiveArtifacts artifacts: "target/packages/*", allowEmptyArchive: false
+  parallel(
+    zip: archiveArtifacts(artifacts: 'target/universal/marathon-*.zip', allowEmptyArchive: false),
+    txz: archiveArtifacts(artifacts: 'target/universal/marathon-*.txz', allowEmptyArchive: false),
+    debs_and_rpms: archiveArtifacts(artifacts: "target/packages/*", allowEmptyArchive: false)
+  )
 }
 
 def build_marathon() {
