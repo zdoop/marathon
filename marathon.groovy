@@ -300,7 +300,7 @@ def integration_test() {
           if (is_master_or_release() || is_submit_request()) {
             sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
           } else {
-            sh "sudo -E integration:test"
+            sh "sudo -E sbt integration:test"
           }
         }
       }
