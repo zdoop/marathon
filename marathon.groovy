@@ -257,6 +257,26 @@ def checkout_marathon() {
   }
 }
 
+def compile_and_test() {
+  try {
+    withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
+      withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
+        sh "sudo -E sbt clean scapegoat doc test integration:test"
+        sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
+      }
+    }
+  } finally {
+    parallel(
+     archive_scapegoat: archiveArtifacts(artifacts: 'target/**/scapegoat-report/scapegoat.html', allowEmptyArchive: true),
+     test_results: junit(allowEmptyResults: true, testResults: 'target/test-reports/**/*.xml'),
+     integration_results: junit(allowEmptyResults: true, testResults: 'target/test-reports/*integration/**/*.xml'),
+     archive_coverage: {if (is_master_or_release() || is_submit_request()) {
+        archive_test_coverage("Test", "target/test-coverage")
+      }}
+    )
+  }
+}
+
 // run through compile/lint/docs. Fail if there were format changes after this.
 def compile() {
   try {
@@ -478,13 +498,14 @@ def build_marathon() {
       install_mesos()
     }
     stage_with_commit_status("1. Compile") {
-      compile()
+      //compile()
+      compile_and_test()
     }
     stage_with_commit_status("2. Test") {
-      test()
+      //test()
     }
     stage_with_commit_status("3. Integration Test") {
-      integration_test()
+      //integration_test()
     }
     stage_with_commit_status("4. Package Binaries") {
       package_binaries()
