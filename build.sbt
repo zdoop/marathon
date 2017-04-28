@@ -45,7 +45,11 @@ lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
     .setPreference(SpacesWithinPatternBinders, true)
 )
 
-lazy val testSettings = Seq(
+lazy val testSettings = inConfig(SerialIntegrationTest)(Defaults.testTasks) ++
+  inConfig(IntegrationTest)(Defaults.testTasks) ++
+  inConfig(UnstableTest)(Defaults.testTasks) ++
+  inConfig(UnstableIntegrationTest)(Defaults.testTasks) ++
+  Seq(
   (coverageDir in Test) := target.value / "test-coverage",
   (coverageDir in IntegrationTest) := target.value / "integration-coverage",
   (coverageDir in SerialIntegrationTest) := target.value / "integration-coverage",
@@ -107,10 +111,7 @@ lazy val testSettings = Seq(
       "-y", "org.scalatest.WordSpec")),
   parallelExecution in UnstableIntegrationTest := true,
   testForkedParallel in UnstableIntegrationTest := true
-) ++ inConfig(SerialIntegrationTest)(Defaults.testTasks) ++
-  inConfig(IntegrationTest)(Defaults.testTasks) ++
-  inConfig(UnstableTest)(Defaults.testTasks) ++
-  inConfig(UnstableIntegrationTest)(Defaults.testTasks)
+)
 
 lazy val commonSettings = testSettings ++
   aspectjSettings ++ Seq(

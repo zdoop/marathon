@@ -269,7 +269,6 @@ def compile_and_test() {
     parallel(
      archive_scapegoat: archiveArtifacts(artifacts: 'target/**/scapegoat-report/scapegoat.html', allowEmptyArchive: true),
      test_results: junit(allowEmptyResults: true, testResults: 'target/test-reports/**/*.xml'),
-     integration_results: junit(allowEmptyResults: true, testResults: 'target/test-reports/*integration/**/*.xml'),
      archive_coverage: {if (is_master_or_release() || is_submit_request()) {
         archive_test_coverage("Test", "target/test-coverage")
       }}
