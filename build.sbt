@@ -98,10 +98,7 @@ lazy val testSettings = inConfig(SerialIntegrationTest)(Defaults.testTasks) ++
   parallelExecution in IntegrationTest := true,
   testForkedParallel in IntegrationTest := true,
   concurrentRestrictions in IntegrationTest := Seq(Tags.limitAll(math.max(1, java.lang.Runtime.getRuntime.availableProcessors() / 2))),
-  test in IntegrationTest := Def.sequential {
-    test in IntegrationTest
-    test in SerialIntegrationTest
-  }.value,
+  test in IntegrationTest := (test in IntegrationTest).dependsOn(test in SerialIntegrationTest).value,
 
   fork in UnstableIntegrationTest := true,
   testOptions in UnstableIntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "unstable-integration"),
