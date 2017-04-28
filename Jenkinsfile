@@ -7,7 +7,11 @@ ansiColor('gnome-terminal') {
       sh "/usr/local/bin/amm scripts/install_mesos.sc"
     }
     stage("Build and Test") {
-     sh """sudo sbt clean coverage testWithCoverageReport integration:test scapegoat"""
+     sh """sudo sbt clean \
+        coverage testWithCoverageReport \
+        integration:test \
+        serial-integration:test \
+        scapegoat"""
     }
     stage("Package") {
      sh """sudo rm -f target/packages/* && sudo sbt clean packageAll"""
