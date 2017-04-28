@@ -262,16 +262,12 @@ def compile_and_test() {
   try {
     withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
       withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-        // makes it look prettier in blue-ocean
-        parallel(
-            compile_and_test: {
-              if (is_master_or_release() || is_submit_request()) {
-                sh "sudo -E sbt clean scapegoat doc coverage testWithCoverageReport"
-              } else {
-                sh "sudo -E sbt clean scapegoat doc test"
-              }
-              sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
-            })
+        if (is_master_or_release() || is_submit_request()) {
+          sh "sudo -E sbt clean scapegoat doc coverage testWithCoverageReport"
+        } else {
+          sh "sudo -E sbt clean scapegoat doc test"
+        }
+        sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
       }
     }
   } finally {
@@ -296,15 +292,11 @@ def integration_test() {
     timeout(time: 60, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          // make the stage look prettier in blue-ocean
-          parallel(
-              integration_test: {
-                if (is_master_or_release() || is_submit_request()) {
-                  sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
-                } else {
-                  sh "sudo -E sbt integration:test"
-                }
-              })
+          if (is_master_or_release() || is_submit_request()) {
+            sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
+          } else {
+            sh "sudo -E sbt integration:test"
+          }
         }
       }
     }
@@ -330,16 +322,11 @@ def unstable_test() {
     timeout(time: 60, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          // make the stage look prettier in blue-ocean
-          parallel(
-              unstable_test: {
-                if (is_master_or_release() || is_submit_request()) {
-                  sh "sudo -E sbt '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
-                } else {
-                  sh "sudo -E sbt unstable:test unstable-integration:test"
-                }
-              }
-          )
+          if (is_master_or_release() || is_submit_request()) {
+            sh "sudo -E sbt '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
+          } else {
+            sh "sudo -E sbt unstable:test unstable-integration:test"
+          }
         }
       }
     }
