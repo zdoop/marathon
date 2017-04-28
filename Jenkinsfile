@@ -2,18 +2,6 @@
 
 def m
 
-properties([
-    parameters([
-        string(name: 'MARATHON_GROOVY_BRANCH', defaultValue: 'master', description: 'Branch to locate marathon.groovy from'),
-        string(name: 'BRANCH_NAME', description: "Branch to build (for multibranch builds)"),
-        string(name: 'REVISION_ID', description: 'Phabricator Revision, e.g. D730 => 730, required for Phabricator and Submit Builds'),
-        string(name: 'PHID', description: "Phabricator Harbormaster object ID, required for Phabricator Builds"),
-        string(name: 'DIFF_ID', description: "Diff ID to build (which diff of D730, for example), required for Phabricator Builds"),
-        string(name: 'TARGET_BRANCH', description: 'Branch to land on (for submit builds)'),
-        string(name: 'PUBLISH_SNAPSHOT', description: 'Publish a snapshot to S3. Always true for master/release, enable explicitly for phabricator builds')
-    ])
-])
-
 ansiColor('gnome-terminal') {
   node('JenkinsMarathonCI-Debian8-2017-04-27') {
     // fetch the file directly from SCM so the job can use it to checkout the rest of the pipeline.
