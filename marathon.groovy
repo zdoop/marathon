@@ -271,7 +271,7 @@ def compile_and_test() {
      test_results: junit(allowEmptyResults: true, testResults: 'target/test-reports/**/*.xml'),
      archive_coverage: {if (is_master_or_release() || is_submit_request()) {
         archive_test_coverage("Test", "target/test-coverage")
-      }}
+      } else {}}
     )
   }
 }
