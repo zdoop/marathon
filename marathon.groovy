@@ -1,5 +1,6 @@
 /**
- * The meat of a Jenkins build
+ * The meat of a Jenkins build. Master/Release/Submit do use coverage,
+ * for speed of development, review jobs do not.
  */
 
 def is_phabricator_build() {
