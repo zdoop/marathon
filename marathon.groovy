@@ -264,14 +264,14 @@ def compile_and_test() {
       withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
         // makes it look prettier in blue-ocean
         parallel(
-          compile_and_test: {
-            if (is_master_or_release() || is_submit_request()) {
-              sh "sudo -E sbt clean scapegoat doc coverage testWithCoverageReport"
-            } else {
-              sh "sudo -E sbt clean scapegoat doc test"
-            }
-            sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
-          })
+            compile_and_test: {
+              if (is_master_or_release() || is_submit_request()) {
+                sh "sudo -E sbt clean scapegoat doc coverage testWithCoverageReport"
+              } else {
+                sh "sudo -E sbt clean scapegoat doc test"
+              }
+              sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
+            })
       }
     }
   } finally {
@@ -298,13 +298,13 @@ def integration_test() {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
           // make the stage look prettier in blue-ocean
           parallel(
-            integration_test: {
-              if (is_master_or_release() || is_submit_request()) {
-                sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
-              } else {
-                sh "sudo -E sbt integration:test"
-              }
-          })
+              integration_test: {
+                if (is_master_or_release() || is_submit_request()) {
+                  sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
+                } else {
+                  sh "sudo -E sbt integration:test"
+                }
+              })
         }
       }
     }
@@ -331,15 +331,16 @@ def unstable_test() {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
           // make the stage look prettier in blue-ocean
-          parallel({
-            unstable_test: {
-              if (is_master_or_release() || is_submit_request()) {
-                sh "sudo -E sbt '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
-              } else {
-                sh "sudo -E sbt unstable:test unstable-integration:test"
+          parallel(
+              unstable_test: {
+                if (is_master_or_release() || is_submit_request()) {
+                  sh "sudo -E sbt '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
+                } else {
+                  sh "sudo -E sbt unstable:test unstable-integration:test"
+                }
               }
-            }
-         })
+          )
+        }
       }
     }
   } catch (Exception err) {
@@ -467,16 +468,10 @@ def publish_artifacts() {
           sshagent(credentials: ['0f7ec9c9-99b2-4797-9ed5-625572d5931d']) {
             // we rsync a directory first, then copy over the binaries into specific folders so
             // that the cron job won't try to publish half-uploaded RPMs/DEBs
-            sh """ssh -o StrictHostKeyChecking=no pkgmaintainer@repo1.hw.ca1.mesosphere.com "mkdir -p ~/repo/incoming/marathon-${
-              gitTag
-            }" """
+            sh """ssh -o StrictHostKeyChecking=no pkgmaintainer@repo1.hw.ca1.mesosphere.com "mkdir -p ~/repo/incoming/marathon-${gitTag}" """
             sh "rsync -avzP target/packages/*${gitTag}* target/packages/*.rpm pkgmaintainer@repo1.hw.ca1.mesosphere.com:~/repo/incoming/marathon-${gitTag}"
-            sh """ssh -o StrictHostKeyChecking=no -o BatchMode=yes pkgmaintainer@repo1.hw.ca1.mesosphere.com "env GIT_TAG=${
-              gitTag
-            } bash -s --" < scripts/publish_packages.sh """
-            sh """ssh -o StrictHostKeyChecking=no -o BatchMode=yes pkgmaintainer@repo1.hw.ca1.mesosphere.com "rm -rf ~/repo/incoming/marathon-${
-              gitTag
-            }" """
+            sh """ssh -o StrictHostKeyChecking=no -o BatchMode=yes pkgmaintainer@repo1.hw.ca1.mesosphere.com "env GIT_TAG=${gitTag} bash -s --" < scripts/publish_packages.sh """
+            sh """ssh -o StrictHostKeyChecking=no -o BatchMode=yes pkgmaintainer@repo1.hw.ca1.mesosphere.com "rm -rf ~/repo/incoming/marathon-${gitTag}" """
           }
         }
       }
