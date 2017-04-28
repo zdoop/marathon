@@ -1,5 +1,19 @@
 #!/usr/bin/env groovy
 
+// General guidance: Use the pipeline syntax helper to write this, generally not a great idea to do by hand.
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '10', numToKeepStr: '')),
+    [$class: 'GitLabConnectionProperty', gitLabConnection: ''],
+    [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false],
+    parameters([string(defaultValue: 'master', description: 'Branch to locate marathon.groovy from', name: 'MARATHON_GROOVY_BRANCH'),
+        string(defaultValue: '', description: 'Branch to build, only used for Multi-branch pipeline builds.', name: 'BRANCH_NAME'),
+        string(defaultValue: '', description: 'Phabricator Revision, e.g. D730 => 730, required for Phabricator and Submit Builds', name: 'REVISION_ID'),
+        string(defaultValue: '', description: 'Phabricator Harbormaster object ID, required for Phabricator Builds', name: 'PHID'),
+        string(defaultValue: '', description: 'Diff ID to build (which diff of D730, for example), required for Phabricator Builds', name: 'DIFF_ID'),
+        string(defaultValue: '', description: 'Branch to land on (required for submit builds)', name: 'TARGET_BRANCH'),
+        booleanParam(defaultValue: false, description: 'Publish a snapshot to S3. Always true for master/release, enable explicitly for phabricator builds.', name: 'PUBLISH_SNAPSHOT')]),
+    pipelineTriggers([])])
+
+
 def m
 
 properties([
