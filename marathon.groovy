@@ -262,7 +262,7 @@ def compile() {
   try {
     withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
       withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-        sh "sudo -E sbt -Dsbt.log.format=false clean scapegoat doc test:compile"
+        sh "sudo -E sbt clean scapegoat doc test:compile"
         sh """if git diff --quiet; then echo 'No format issues detected'; else echo 'Patch has Format Issues'; exit 1; fi"""
       }
     }
@@ -276,13 +276,19 @@ def test() {
     timeout(time: 30, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          sh """sudo -E sbt -Dsbt.log.format=false '; clean; coverage; testWithCoverageReport' """
+          if (is_master_or_release() || is_submit_request()) {
+            sh """sudo -E sbt '; clean; coverage; testWithCoverageReport' """
+          } else {
+            sh """sudo -E sbt test"""
+          }
         }
       }
     }
   } finally {
     junit allowEmptyResults: true, testResults: 'target/test-reports/**/*.xml'
-    archive_test_coverage("Test", "target/test-coverage")
+    if (is_master_or_release() || is_submit_request()) {
+      archive_test_coverage("Test", "target/test-coverage")
+    }
   }
 }
 
@@ -291,13 +297,19 @@ def integration_test() {
     timeout(time: 60, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          sh """sudo -E sbt -Dsbt.log.format=false '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
+          if (is_master_or_release() || is_submit_request()) {
+            sh """sudo -E sbt '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
+          } else {
+            sh "sudo -E integration:test"
+          }
         }
       }
     }
   } finally {
     junit allowEmptyResults: true, testResults: 'target/test-reports/*integration/**/*.xml'
-    archive_test_coverage("integration test", "target/integration-coverage")
+    if (is_master_or_release() || is_submit_request()) {
+      archive_test_coverage("integration test", "target/integration-coverage")
+    }
   }
 }
 
@@ -311,7 +323,11 @@ def unstable_test() {
     timeout(time: 60, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          sh "sudo -E sbt -Dsbt.log.format=false '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
+          if (is_master_or_release() || is_submit_request()) {
+            sh "sudo -E sbt '; clean; coverage; unstable:testWithCoverageReport; unstable-integration:testWithCoverageReport' "
+          } else {
+            sh "sudo -E sbt unstable:test unstable-integration:test"
+          }
         }
       }
     }
@@ -321,8 +337,10 @@ def unstable_test() {
     mark_unstable_results("target/test-reports/unstable-integration target/test-reports/unstable")
     junit allowEmptyResults: true, testResults: 'target/test-reports/unstable-integration/**/*.xml'
     junit allowEmptyResults: true, testResults: 'target/test-reports/unstable/**/*.xml'
-    archive_test_coverage("Unstable Test", "target/unstable-coverage")
-    archive_test_coverage("Unstable Integration Test", "target/unstable-integration-coverage")
+    if (is_master_or_release() || is_submit_request()) {
+      archive_test_coverage("Unstable Test", "target/unstable-coverage")
+      archive_test_coverage("Unstable Integration Test", "target/unstable-integration-coverage")
+    }
   }
 }
 
@@ -434,7 +452,13 @@ def publish_artifacts() {
 
 def package_binaries() {
   sh("sudo rm -f target/packages/*")
-  sh("sudo sbt clean packageAll")
+  // master, release and submit request builds have coverage turned on.
+  // we don't want to accidentally publish coverage instrumented builds.
+  if (is_master_or_release() || is_submit_request()) {
+    sh("sudo sbt clean packageAll")
+  } else {
+    sh("sudo sbt packageAll")
+  }
   return this
 }
 

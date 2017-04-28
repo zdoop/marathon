@@ -142,6 +142,8 @@ lazy val commonSettings = testSettings ++
     "-Yclosure-elim",
     "-Ydead-code"
   ),
+  // Don't need any linting, etc for docs, so gain a small amount of build time there.
+  scalacOptions in (Compile, doc) := Seq("-encoding", "UTF-8", "-deprecation", "-feature", "-Xfuture"),
   javacOptions in Compile ++= Seq(
     "-encoding", "UTF-8", "-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-Xlint:deprecation"
   ),
