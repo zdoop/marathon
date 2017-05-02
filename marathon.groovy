@@ -291,7 +291,7 @@ def integration_test() {
     timeout(time: 60, unit: 'MINUTES') {
       withCredentials([file(credentialsId: 'DOT_M2_SETTINGS', variable: 'DOT_M2_SETTINGS')]) {
         withEnv(['RUN_DOCKER_INTEGRATION_TESTS=true', 'RUN_MESOS_INTEGRATION_TESTS=true']) {
-          sh """sudo -E sbt -Dsbt.log.format=false '; clean; coverage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
+          sh """sudo -E sbt -Dsbt.log.format=false '; clean; coverage; stage; integration:testWithCoverageReport; serial-integration:testWithCoverageReport' """
         }
       }
     }
