@@ -63,7 +63,6 @@ lazy val testSettings = Seq(
   testOptions in Test := Seq(formattingTestArg(target.value / "test-reports"),
     Tests.Argument("-l", "mesosphere.marathon.IntegrationTest",
       "-l", "mesosphere.marathon.SerialIntegrationTest",
-      "-l", "mesosphere.marathon.UnstableTest",
       "-y", "org.scalatest.WordSpec")),
   fork in Test := true,
 
@@ -79,7 +78,6 @@ lazy val testSettings = Seq(
   testOptions in SerialIntegrationTest := Seq(formattingTestArg(target.value / "test-reports" / "serial-integration"),
     Tests.Argument(
       "-n", "mesosphere.marathon.SerialIntegrationTest",
-      "-l", "mesosphere.marathon.UnstableTest",
       "-y", "org.scalatest.WordSpec")),
   parallelExecution in SerialIntegrationTest := false,
   testForkedParallel in SerialIntegrationTest := false,
@@ -89,7 +87,6 @@ lazy val testSettings = Seq(
     Tests.Argument(
       "-n", "mesosphere.marathon.IntegrationTest",
       "-l", "mesosphere.marathon.SerialIntegrationTest",
-      "-l", "mesosphere.marathon.UnstableTest",
       "-y", "org.scalatest.WordSpec")),
   parallelExecution in IntegrationTest := true,
   testForkedParallel in IntegrationTest := true,

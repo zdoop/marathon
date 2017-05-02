@@ -52,6 +52,24 @@ object SerialIntegrationTag extends Tag("mesosphere.marathon.SerialIntegrationTe
   */
 case class WhenEnvSet(envVarName: String) extends Tag(if (sys.env.getOrElse(envVarName, "false") == "true") "" else classOf[Ignore].getName)
 
+trait CancelFailedUnstableTest extends TestSuite {
+
+  def isUnstable(testData: TestData): Boolean = testData.tags.exists(_ == Unstable.name)
+
+  def markAsCanceledOnFailure(blk: => Outcome): Outcome =
+    blk match {
+      case Failed(ex) => Canceled("Unstable test failed", ex)
+      case other => other
+    }
+
+  override def withFixture(test: NoArgTest): Outcome = if (isUnstable(test)) {
+    markAsCanceledOnFailure { super.withFixture(test) }
+  } else {
+    super.withFixture(test)
+  }
+
+}
+
 trait ValidationTestLike extends Validation {
   this: Assertions =>
 
@@ -108,7 +126,8 @@ trait UnitTestLike extends WordSpecLike
     with StrictLogging
     with Mockito
     with ExitDisabledTest
-    with TimeLimitedTests {
+    with TimeLimitedTests
+    with CancelFailedUnstableTest {
 
   override val timeLimit = Span(30, Seconds)
 
