@@ -121,9 +121,11 @@ case class LocalMarathon(
   // it'd be great to be able to execute in memory, but we can't due to GuiceFilter using a static :(
   private lazy val processBuilder = {
     val java = sys.props.get("java.home").fold("java")(_ + "/bin/java")
-    val cp = sys.props.getOrElse("java.class.path", "target/classes")
+    //val cp = sys.props.getOrElse("java.class.path", "target/classes")
+    val cp = sys.props("java.class.path").replace("target/scala-2.11/test-classes", "target/scala-2.11/marathon_2.11-1.5.0-SNAPSHOT-480-g4794697.jar")
     val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
     val cmd = Seq(java, memSettings, s"-DmarathonUUID=$uuid -DtestSuite=$suiteName", "-classpath", cp, "-client", mainClass) ++ args
+    println(s"######## $cmd")
     Process(cmd, workDir, sys.env.toSeq: _*)
   }
 
