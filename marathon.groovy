@@ -239,7 +239,7 @@ def checkout_marathon() {
               git config user.email "mesosphere-ci@users.noreply.github.com" &&\
               git config user.signingkey 32725FF3 &&\
               git commit -S --amend --signoff --no-edit &&
-              git push origin $(git rev-parse HEAD)'''
+              git push origin -f $(git rev-parse HEAD):refs/heads/jenkins-merge'''
       }
       clean_git()
     } else {
