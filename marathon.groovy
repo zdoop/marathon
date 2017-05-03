@@ -12,9 +12,11 @@ def is_submit_request() {
 }
 
 def is_release_build(gitTag) {
-  if (gitTag.contains("SNAPSHOT") || gitTag.contains("g")) {
+  if (is_phabricator_build()) {
     return false
-  } else if (env.BRANCH_NAME == null && !is_phabricator_build()) {
+  } else if (gitTag.contains("SNAPSHOT") || gitTag.contains("g")) {
+    return false
+  } else if (env.BRANCH_NAME == null) {
     return sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).startsWith("releases/")
   } else if (env.BRANCH_NAME.startsWith("releases/")) {
     return true
