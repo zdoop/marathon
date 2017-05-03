@@ -106,11 +106,11 @@ def previousBuildFailed() {
 }
 
 def is_master_or_release() {
-  echo "######### ${env.BRANCH_NAME}"
+  echo "######### ${env.GIT_BRANCH}"
   if(env.DIFF_ID != "" &&
-     ((env.BRANCH_NAME != null && env.BRANCH_NAME.startsWith("releases/")) ||
-      env.BRANCH_NAME == "master" ||
-      (env.BRANCH_NAME != null && env.BRANCH_NAME.startsWith("pipelines/")))) {
+     ((env.GIT_BRANCH != null && env.GIT_BRANCH.startsWith("releases/")) ||
+      env.GIT_BRANCH == "master" ||
+      (env.GIT_BRANCH != null && env.GIT_BRANCH.startsWith("pipelines/")))) {
     echo "###### on master"
     return true
   } else {
