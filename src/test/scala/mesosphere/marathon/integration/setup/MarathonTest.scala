@@ -122,8 +122,8 @@ case class LocalMarathon(
   private lazy val processBuilder = {
     val java = sys.props.get("java.home").fold("java")(_ + "/bin/java")
     val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
-    //val cmd = Seq(s"${sys.props("user.dir")}/target/universal/stage/bin/marathon") ++ args
-    val cmd = Seq(java, "-classpath", s"${sys.props("user.dir")}/target/universal/stage/lib/*") ++ args
+    val cmd = Seq(s"${sys.props("user.dir")}/target/universal/stage/bin/marathon") ++ args
+    //    val cmd = Seq(java, "-classpath", s"${sys.props("user.dir")}/target/universal/stage/lib/*") ++ args
     logger.info(s"Starting Marathon: $cmd")
     logger.info(s"Environment: ${sys.env}")
     Process(cmd, workDir, sys.env.toSeq: _*)
