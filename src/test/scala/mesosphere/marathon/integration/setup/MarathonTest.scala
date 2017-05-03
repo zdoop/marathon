@@ -125,6 +125,7 @@ case class LocalMarathon(
     //val cmd = Seq(s"${sys.props("user.dir")}/target/universal/stage/bin/marathon") ++ args
     val cmd = Seq(java, "-classpath", s"${sys.props("user.dir")}/target/universal/stage/lib/*") ++ args
     logger.debug(s"Starting Marathon: $cmd")
+    logger.debug(s"Environment: ${sys.env}")
     Process(cmd, workDir, sys.env.toSeq: _*)
   }
 
