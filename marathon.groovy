@@ -106,7 +106,7 @@ def previousBuildFailed() {
 }
 
 def is_master_or_release() {
-  echo "######### ${env.GIT_BRANCH}"
+  echo "#########BRANCH ${env.GIT_BRANCH}, ${BRANCH_NAME}, ${env.BRANCH_NAME}"
   if(env.DIFF_ID != "" &&
      ((env.GIT_BRANCH != null && env.GIT_BRANCH.startsWith("releases/")) ||
       env.GIT_BRANCH == "master" ||
