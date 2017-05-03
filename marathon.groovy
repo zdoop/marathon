@@ -106,8 +106,8 @@ def previousBuildFailed() {
 }
 
 def is_master_or_release() {
-  return !is_phabricator_build() || is_release_build() ||
-    sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true) == "master"
+  return (!is_phabricator_build() && (is_release_build() ||
+    sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true) == "master"))
 }
 
 /**
