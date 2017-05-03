@@ -106,7 +106,17 @@ def previousBuildFailed() {
 }
 
 def is_master_or_release() {
-  return env.DIFF_ID != "" && ((env.BRANCH_NAME != null && env.BRANCH_NAME.startsWith("releases/")) || env.BRANCH_NAME == "master")
+  echo "######### ${env.BRANCH_NAME}"
+  if(env.DIFF_ID != "" &&
+     ((env.BRANCH_NAME != null && env.BRANCH_NAME.startsWith("releases/")) ||
+      env.BRANCH_NAME == "master" ||
+      (env.BRANCH_NAME != null && env.BRANCH_NAME.startsWith("pipelines/")))) {
+    echo "###### on master"
+    return true
+  } else {
+    echo "###### not on master"
+    return false
+  }
 }
 
 /**
