@@ -124,8 +124,8 @@ case class LocalMarathon(
     val memSettings = s"-Xmx${Runtime.getRuntime.maxMemory()}"
     //val cmd = Seq(s"${sys.props("user.dir")}/target/universal/stage/bin/marathon") ++ args
     val cmd = Seq(java, "-classpath", s"${sys.props("user.dir")}/target/universal/stage/lib/*") ++ args
-    logger.debug(s"Starting Marathon: $cmd")
-    logger.debug(s"Environment: ${sys.env}")
+    logger.info(s"Starting Marathon: $cmd")
+    logger.info(s"Environment: ${sys.env}")
     Process(cmd, workDir, sys.env.toSeq: _*)
   }
 
