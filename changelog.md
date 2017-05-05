@@ -76,6 +76,8 @@ Please move to the `/v2/events` endpoint instead.
 It is possible to define secrets with a given mount path. They can be interpreted as file based secrets by a marathon plugin.
 See the following example:
 
+for apps:
+
 ```
 {
   "id": "app-with-secrets",
@@ -84,7 +86,7 @@ See the following example:
       {
         "containerPath": "path",
         "secret": {
-          "source": "/path/to/other/secret"
+          "source": "/path/to/my/secret"
         }
       }
     ]
@@ -92,10 +94,39 @@ See the following example:
 }
 ```
 
+for pods:
+
+```
+{
+  "id": "/pod",
+  "containers": [
+    {
+      "name": "container-1",
+      "volumeMounts": [
+        {
+          "name": "secretvol",
+          "mountPath": "path"
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "secretvol",
+      "secret": {
+        "source": "/path/to/my/secret"
+      }
+    }
+  ]
+}
+```
+
 #### New secrets API and deprecating old API 
 To define a environment base secret you should now use place the secret definition in place of the usage.
 Shown in the example as `MY_ENV`. Using secret references is now deprecated and will be removed in the next marathon release.
 Shown in the example as `DEPRECATED_WAY`.
+
+for apps:
 
 ```
 {
@@ -114,6 +145,30 @@ Shown in the example as `DEPRECATED_WAY`.
     "deprecated-way-of-secret-refs": {
       "source": "/path/to/secret"
     }
+  }
+}
+```
+
+for pods:
+
+```
+{
+  ...
+  "environment": {
+    "MY_ENV": {
+      "secret": {
+        "source": "/path/to/secret"
+      }
+    },
+    "DEPRECATED_WAY": {
+      "secret": "deprecated-way-of-secret-refs"
+    }
+  },
+  "secrets": {
+    "deprecated-way-of-secret-refs": {
+      "source": "/path/to/secret"
+    }
+  }
 }
 ```
 
