@@ -251,23 +251,21 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
       }
 
       get {
-        path(Segment / Segment / IntNumber / "health") { (uriEncodedAppId, versionId, port) =>
+        path(Segment / Segment / "health") { (uriEncodedAppId, versionId) =>
           import PathId._
           val appId = URLDecoder.decode(uriEncodedAppId, "UTF-8").toRootPath
 
-          def instance = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == port })
+          def instance = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId })
 
-          def definition = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == 0 })
+          val state = instance.fold(true)(_.healthy)
 
-          val state = instance.orElse(definition).fold(true)(_.healthy)
-
-          logger.info(s"Received health check request: app=$appId, version=$versionId appMockPort=$port reply=$state")
+          logger.info(s"Received health check request: app=$appId, version=$versionId reply=$state")
           if (state) {
             complete(HttpResponse(status = StatusCodes.OK))
           } else {
             complete(HttpResponse(status = StatusCodes.InternalServerError))
           }
-        } ~ path(Segment / Segment / IntNumber / "ready") { (uriEncodedAppId, versionId, port) =>
+        } ~ path(Segment / Segment / "ready") { (uriEncodedAppId, versionId) =>
           import PathId._
           val appId = URLDecoder.decode(uriEncodedAppId, "UTF-8").toRootPath
 
@@ -276,7 +274,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
           // An app is not ready by default to avoid race conditions.
           val isReady = check.fold(false)(_.call)
 
-          logger.info(s"Received readiness check request: app=$appId, version=$versionId appMockPort=$port reply=$isReady")
+          logger.info(s"Received readiness check request: app=$appId, version=$versionId reply=$isReady")
 
           if (isReady) {
             complete(HttpResponse(status = StatusCodes.OK))
@@ -331,7 +329,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     val appMock: File = new File(projectDir, "src/test/python/app_mock.py")
     val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some(s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; ${appMock.getAbsolutePath} """ +
-      s"""$$PORT0 $appId $versionId $$MESOS_TASK_ID http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
+      s"""$$PORT0 $appId $versionId  http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
@@ -350,7 +348,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
     val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some("""echo APP PROXY $$MESOS_TASK_ID RUNNING; /opt/marathon/python/app_mock.py """ +
-      s"""$$PORT0 $appId $versionId $$MESOS_TASK_ID http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
+      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
@@ -433,7 +431,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     * @return The IntegrationHealthCheck object which is used to control the replies.
     */
   def appProxyCheck(appId: PathId, versionId: String, state: Boolean): IntegrationHealthCheck = {
-    val check = new IntegrationHealthCheck(appId, versionId, 0, state)
+    val check = new IntegrationHealthCheck(appId, versionId, state)
     healthChecks { checks =>
       checks.filter(c => c.appId == appId && c.versionId == versionId).foreach(checks -= _)
       checks += check
@@ -450,7 +448,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     * @return The IntegrationReadinessCheck object which is used to control replies.
     */
   def appProxyReadinessCheck(appId: PathId, versionId: String): IntegrationReadinessCheck = {
-    val check = new IntegrationReadinessCheck(appId, versionId, 0)
+    val check = new IntegrationReadinessCheck(appId, versionId)
     readinessChecks { checks =>
       checks.filter(c => c.appId == appId && c.versionId == versionId).foreach(checks -= _)
       checks += check

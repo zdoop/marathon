@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 /**
   * Health check helper to define health behaviour of launched applications
   */
-class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port: Int, var state: Boolean)
+class IntegrationHealthCheck(val appId: PathId, val versionId: String, var state: Boolean)
     extends StrictLogging {
 
   case class HealthStatusChange(deadLine: Deadline, state: Boolean)
@@ -38,12 +38,12 @@ class IntegrationHealthCheck(val appId: PathId, val versionId: String, val port:
     val (past, future) = changes.partition(_.deadLine.isOverdue())
     state = past.lastOption.fold(state)(_.state)
     changes = future
-    logger.debug(s"Get health state from: app=$appId port=$port -> $state")
+    logger.debug(s"Get health state from: app=$appId -> $state")
     state
   }
 
   def forVersion(versionId: String, state: Boolean) = {
-    new IntegrationHealthCheck(appId, versionId, port, state)
+    new IntegrationHealthCheck(appId, versionId, state)
   }
 }
 
