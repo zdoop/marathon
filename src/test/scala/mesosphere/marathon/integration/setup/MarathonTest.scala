@@ -2,6 +2,7 @@ package mesosphere.marathon
 package integration.setup
 
 import java.io.File
+import java.net.{ URLDecoder, URLEncoder }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -228,6 +229,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
   protected val events = new ConcurrentLinkedQueue[ITSSEEvent]()
   protected val healthChecks = Lock(mutable.ListBuffer.empty[IntegrationHealthCheck])
+  protected val readinessChecks = Lock(mutable.ListBuffer.empty[IntegrationReadinessCheck])
 
   /**
     * Note! This is declared as lazy in order to prevent eager evaluation of values on which it depends
@@ -248,18 +250,34 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
       }
 
       get {
-        path("health" / Segments) { uriPath =>
+        path(Segment / Segment / IntNumber / "health") { (uriEncodedAppId, versionId, port) =>
           import PathId._
-          val (path, remaining) = uriPath.splitAt(uriPath.size - 2)
-          val (versionId, port) = (remaining.head, remaining.tail.head.toInt)
-          val appId = path.mkString("/").toRootPath
+          val appId = URLDecoder.decode(uriEncodedAppId, "UTF-8").toRootPath
 
           def instance = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == port })
+
           def definition = healthChecks(_.find { c => c.appId == appId && c.versionId == versionId && c.port == 0 })
+
           val state = instance.orElse(definition).fold(true)(_.healthy)
 
           logger.info(s"Received health check request: app=$appId, version=$versionId appMockPort=$port reply=$state")
           if (state) {
+            complete(HttpResponse(status = StatusCodes.OK))
+          } else {
+            complete(HttpResponse(status = StatusCodes.InternalServerError))
+          }
+        } ~ path(Segment / Segment / IntNumber / "ready") { (uriEncodedAppId, versionId, port) =>
+          import PathId._
+          val appId = URLDecoder.decode(uriEncodedAppId, "UTF-8").toRootPath
+
+          def check: Option[IntegrationReadinessCheck] = readinessChecks(_.find { c => c.appId == appId && c.versionId == versionId })
+
+          // An app is not ready by default to avoid race conditions.
+          val isReady = check.fold(false)(_.call)
+
+          logger.info(s"Received readiness check request: app=$appId, version=$versionId appMockPort=$port reply=$isReady")
+
+          if (isReady) {
             complete(HttpResponse(status = StatusCodes.OK))
           } else {
             complete(HttpResponse(status = StatusCodes.InternalServerError))
@@ -310,8 +328,9 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
     val projectDir = sys.props.getOrElse("user.dir", ".")
     val appMock: File = new File(projectDir, "src/test/python/app_mock.py")
+    val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some(s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; ${appMock.getAbsolutePath} """ +
-      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/health$appId/$versionId""")
+      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
@@ -328,8 +347,9 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     val projectDir = sys.props.getOrElse("user.dir", ".")
     val containerDir = "/opt/marathon"
 
+    val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some("""echo APP PROXY $$MESOS_TASK_ID RUNNING; /opt/marathon/python/app_mock.py """ +
-      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/health$appId/$versionId""")
+      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
@@ -402,9 +422,35 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     logger.info("CLEAN UP finished !!!!!!!!!")
   }
 
+  /**
+    * Add an integration health check to internal health checks. The integration health check is used to control the
+    * health check replies for our app mock.
+    *
+    * @param appId The app id of the app mock
+    * @param versionId The version of the app mock
+    * @param state The initial health status of the app mock
+    * @return The IntegrationHealthCheck object which is used to control the replies.
+    */
   def appProxyCheck(appId: PathId, versionId: String, state: Boolean): IntegrationHealthCheck = {
     val check = new IntegrationHealthCheck(appId, versionId, 0, state)
     healthChecks { checks =>
+      checks.filter(c => c.appId == appId && c.versionId == versionId).foreach(checks -= _)
+      checks += check
+    }
+    check
+  }
+
+  /**
+    * Adds an integration readiness check to internal readiness checks. The behaviour is similar to integration health
+    * checks.
+    *
+    * @param appId The app id of the app mock
+    * @param versionId The version of the app mock
+    * @return The IntegrationReadinessCheck object which is used to control replies.
+    */
+  def appProxyReadinessCheck(appId: PathId, versionId: String): IntegrationReadinessCheck = {
+    val check = new IntegrationReadinessCheck(appId, versionId, 0)
+    readinessChecks { checks =>
       checks.filter(c => c.appId == appId && c.versionId == versionId).foreach(checks -= _)
       checks += check
     }
