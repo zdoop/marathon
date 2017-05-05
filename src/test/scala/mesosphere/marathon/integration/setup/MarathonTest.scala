@@ -331,7 +331,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
     val appMock: File = new File(projectDir, "src/test/python/app_mock.py")
     val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some(s"""echo APP PROXY $$MESOS_TASK_ID RUNNING; ${appMock.getAbsolutePath} """ +
-      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
+      s"""$$PORT0 $appId $versionId $$MESOS_TASK_ID http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
@@ -350,7 +350,7 @@ trait MarathonTest extends StrictLogging with ScalaFutures with Eventually {
 
     val encodedAppId = URLEncoder.encode(appId.toString, "UTF-8")
     val cmd = Some("""echo APP PROXY $$MESOS_TASK_ID RUNNING; /opt/marathon/python/app_mock.py """ +
-      s"""$$PORT0 $appId $versionId http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
+      s"""$$PORT0 $appId $versionId $$MESOS_TASK_ID http://127.0.0.1:${healthEndpoint.localAddress.getPort}/$encodedAppId/$versionId""")
 
     App(
       id = appId.toString,
