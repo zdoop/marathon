@@ -325,7 +325,7 @@ def test_bad_uri():
     client.add_app(app_def)
 
 
-    @retrying.retry(wait_fixed=1000, stop_max_delay=10000, retry_on_exception=retry_on_exception)
+    @retrying.retry(wait_fixed=1000, stop_max_attempt_number=30, retry_on_exception=retry_on_exception)
     def check_failure_message():
         appl = client.get_app(app_id)
         message = appl['lastTaskFailure']['message']
@@ -531,11 +531,7 @@ def test_health_check_unhealthy():
     @retrying.retry(wait_fixed=1000, stop_max_delay=10000)
     def check_failure_message():
         app = client.get_app('/unhealthy')
-        # assert app['tasksRunning'] == 1 && app['tasksHealthy'] == 0 && app['tasksUnhealthy'] == 1
-        assert app['tasksRunning'] == 1
-        assert app['tasksHealthy'] == 0
-        assert app['tasksUnhealthy'] == 1
-
+        assert app['tasksRunning'] == 1 and app['tasksHealthy'] == 0 and app['tasksUnhealthy'] == 1
 
     check_failure_message()
 
