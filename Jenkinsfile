@@ -5,7 +5,6 @@ properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKe
     [$class: 'GitLabConnectionProperty', gitLabConnection: ''],
     [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false],
     parameters([string(defaultValue: 'master', description: 'Branch to locate marathon.groovy from. This facilitates testing changes to the pipeline.', name: 'GROOVY_BRANCH'),
-        string(defaultValue: '', description: 'Branch to build, only used for Multi-branch pipeline builds.', name: 'BRANCH_NAME'),
         string(defaultValue: '', description: 'Phabricator Revision, e.g. D730 => 730, required for Phabricator and Submit Builds', name: 'REVISION_ID'),
         string(defaultValue: '', description: 'Phabricator Harbormaster object ID, required for Phabricator Builds', name: 'PHID'),
         string(defaultValue: '', description: 'Diff ID to build (which diff of D730, for example), required for Phabricator Builds', name: 'DIFF_ID'),

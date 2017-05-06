@@ -276,7 +276,7 @@ def checkout_marathon() {
     sshagent(['mesosphere-ci-github']) {
       sh("git fetch")
     }
-    echo "Git Tag: ${gitTag()} Git Branch: ${gitBranch()} MasterOrRelease: ${is_master_or_release()}"
+    echo "Git Tag: ${gitTag()} Git Branch: ${gitBranch()}  MasterOrRelease: ${is_master_or_release()}"
     clean_git()
   }
 }
