@@ -273,6 +273,7 @@ def checkout_marathon() {
     gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
     shortCommit = gitCommit.take(8)
     currentBuild.displayName = "#${env.BUILD_NUMBER}: ${env.BRANCH_NAME} ${shortCommit}"
+    sh("git pull")
     echo "Git Tag: ${gitTag()} Git Branch: ${gitBranch()} MasterOrRelease: ${is_master_or_release()}"
     clean_git()
   }
