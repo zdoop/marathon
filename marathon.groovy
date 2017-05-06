@@ -15,11 +15,7 @@ def gitTag() {
 
 def gitBranch() {
   if (GITBRANCH == "") {
-    if (sh(script: "git rev-parse HEAD", returnStdout: true).trim() == sh(script: "git rev-parse origin/master", returnStdout: true).trim()) {
-      GITBRANCH = "master"
-    } else {
-      GITBRANCH = sh(script: "git symbolic-ref HEAD", returnStdout: true).trim()
-    }
+    GITBRANCH = env.BRANCH_NAME
   }
   return GITBRANCH
 }
