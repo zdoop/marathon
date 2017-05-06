@@ -274,7 +274,7 @@ def checkout_marathon() {
     shortCommit = gitCommit.take(8)
     currentBuild.displayName = "#${env.BUILD_NUMBER}: ${env.BRANCH_NAME} ${shortCommit}"
     sshagent(['mesosphere-ci-github']) {
-      sh("git pull")
+      sh("git fetch")
     }
     echo "Git Tag: ${gitTag()} Git Branch: ${gitBranch()} MasterOrRelease: ${is_master_or_release()}"
     clean_git()
